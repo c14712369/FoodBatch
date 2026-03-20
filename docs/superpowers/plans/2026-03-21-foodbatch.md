@@ -62,7 +62,7 @@ FoodBatch/
 - Create: `fly.toml`
 - Create: `vitest.config.ts`
 
-- [ ] **Step 1: Initialise git repo and install dependencies**
+- [x] **Step 1: Initialise git repo and install dependencies**
 
 ```bash
 cd C:/Users/c1471/Desktop/FoodBatch
@@ -72,7 +72,7 @@ npm install discord.js @discordjs/rest @discordjs/builders node-cron cheerio rss
 npm install -D typescript tsx vitest @types/node
 ```
 
-- [ ] **Step 2: Write tsconfig.json**
+- [x] **Step 2: Write tsconfig.json**
 
 ```json
 {
@@ -92,7 +92,7 @@ npm install -D typescript tsx vitest @types/node
 }
 ```
 
-- [ ] **Step 3: Update package.json scripts**
+- [x] **Step 3: Update package.json scripts**
 
 Add to the `scripts` section:
 ```json
@@ -109,7 +109,7 @@ Add to the `scripts` section:
 
 Also set `"type": "module"` in package.json root.
 
-- [ ] **Step 4: Write .gitignore**
+- [x] **Step 4: Write .gitignore**
 
 ```
 node_modules/
@@ -118,7 +118,7 @@ dist/
 *.js.map
 ```
 
-- [ ] **Step 5: Write .env.example**
+- [x] **Step 5: Write .env.example**
 
 ```
 DISCORD_TOKEN=
@@ -135,7 +135,7 @@ APPS_SCRIPT_SECRET=
 MY_MAPS_FILE_ID=
 ```
 
-- [ ] **Step 6: Write fly.toml**
+- [x] **Step 6: Write fly.toml**
 
 The bot is a Discord WebSocket client with no HTTP server, so no `[[services]]` block is needed.
 
@@ -149,7 +149,7 @@ primary_region = "nrt"
   NODE_ENV = "production"
 ```
 
-- [ ] **Step 7: Write vitest.config.ts**
+- [x] **Step 7: Write vitest.config.ts**
 
 Required for ESM + NodeNext module resolution to work with vitest.
 
@@ -163,7 +163,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 8: Commit scaffold**
+- [x] **Step 8: Commit scaffold**
 
 ```bash
 git add .
@@ -178,7 +178,7 @@ git commit -m "feat: 初始化專案結構與依賴套件"
 - Create: `src/types.ts`
 - Create: `src/config.ts`
 
-- [ ] **Step 1: Write src/types.ts**
+- [x] **Step 1: Write src/types.ts**
 
 ```typescript
 export type PlaceType = '餐廳' | '咖啡廳' | '景點' | '夜市';
@@ -212,7 +212,7 @@ export interface RunSummary {
 }
 ```
 
-- [ ] **Step 2: Write src/config.ts**
+- [x] **Step 2: Write src/config.ts**
 
 ```typescript
 import 'dotenv/config';
@@ -243,7 +243,7 @@ export const config = {
 };
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/types.ts src/config.ts
@@ -258,7 +258,7 @@ git commit -m "feat: 新增共用型別與設定模組"
 - Create: `src/utils/classify.ts`
 - Create: `tests/utils/classify.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```typescript
 // tests/utils/classify.test.ts
@@ -287,14 +287,14 @@ describe('classifyCuisine', () => {
 });
 ```
 
-- [ ] **Step 2: Run to confirm failure**
+- [x] **Step 2: Run to confirm failure**
 
 ```bash
 npm test -- tests/utils/classify.test.ts
 ```
 Expected: FAIL — `classifyCuisine` not found
 
-- [ ] **Step 3: Implement src/utils/classify.ts**
+- [x] **Step 3: Implement src/utils/classify.ts**
 
 ```typescript
 const CUISINE_MAP: Record<string, string> = {
@@ -331,14 +331,14 @@ export function classifyCuisine(types: string[]): string {
 }
 ```
 
-- [ ] **Step 4: Run tests to confirm pass**
+- [x] **Step 4: Run tests to confirm pass**
 
 ```bash
 npm test -- tests/utils/classify.test.ts
 ```
 Expected: 6 passing
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/utils/classify.ts tests/utils/classify.test.ts
@@ -353,7 +353,7 @@ git commit -m "feat: 新增料理類型分類工具（TDD）"
 - Create: `src/utils/dedup.ts`
 - Create: `tests/utils/dedup.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```typescript
 // tests/utils/dedup.test.ts
@@ -390,13 +390,13 @@ describe('filterNewPlaces', () => {
 });
 ```
 
-- [ ] **Step 2: Run to confirm failure**
+- [x] **Step 2: Run to confirm failure**
 
 ```bash
 npm test -- tests/utils/dedup.test.ts
 ```
 
-- [ ] **Step 3: Implement src/utils/dedup.ts**
+- [x] **Step 3: Implement src/utils/dedup.ts**
 
 ```typescript
 import type { Place } from '../types.js';
@@ -407,14 +407,14 @@ export function filterNewPlaces(candidates: Place[], existing: Place[]): Place[]
 }
 ```
 
-- [ ] **Step 4: Run tests to confirm pass**
+- [x] **Step 4: Run tests to confirm pass**
 
 ```bash
 npm test -- tests/utils/dedup.test.ts
 ```
 Expected: 4 passing
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/utils/dedup.ts tests/utils/dedup.test.ts
@@ -428,7 +428,7 @@ git commit -m "feat: 新增去重工具（TDD）"
 **Files:**
 - Create: `src/services/sheets.ts`
 
-- [ ] **Step 1: Write src/services/sheets.ts**
+- [x] **Step 1: Write src/services/sheets.ts**
 
 ```typescript
 import { google } from 'googleapis';
@@ -563,7 +563,7 @@ function rowToPlace(r: string[]): Place {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/services/sheets.ts
@@ -578,7 +578,7 @@ git commit -m "feat: 新增 Google Sheets 服務（bootstrap、讀寫、同步�
 - Create: `src/services/places.ts`
 - Create: `tests/services/places.test.ts`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```typescript
 // tests/services/places.test.ts
@@ -626,13 +626,13 @@ describe('searchPlaces', () => {
 });
 ```
 
-- [ ] **Step 2: Run to confirm failure**
+- [x] **Step 2: Run to confirm failure**
 
 ```bash
 npm test -- tests/services/places.test.ts
 ```
 
-- [ ] **Step 3: Implement src/services/places.ts**
+- [x] **Step 3: Implement src/services/places.ts**
 
 ```typescript
 import axios from 'axios';
@@ -709,14 +709,14 @@ interface RawPlace {
 }
 ```
 
-- [ ] **Step 4: Run tests to confirm pass**
+- [x] **Step 4: Run tests to confirm pass**
 
 ```bash
 npm test -- tests/services/places.test.ts
 ```
 Expected: 3 passing
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/services/places.ts tests/services/places.test.ts
@@ -730,7 +730,7 @@ git commit -m "feat: 新增 Google Places API 服務（TDD）"
 **Files:**
 - Create: `src/scrapers/rss.ts`
 
-- [ ] **Step 1: Write src/scrapers/rss.ts**
+- [x] **Step 1: Write src/scrapers/rss.ts**
 
 ```typescript
 import Parser from 'rss-parser';
@@ -791,7 +791,7 @@ export async function scrapeRssPlaces(city: string): Promise<Place[]> {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/scrapers/rss.ts
