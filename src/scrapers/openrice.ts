@@ -2,11 +2,7 @@ import * as cheerio from 'cheerio';
 import axios from 'axios';
 import { searchPlaces } from '../services/places.js';
 import type { Place } from '../types.js';
-
-function isSimilar(a: string, b: string): boolean {
-  const norm = (s: string) => s.replace(/\s/g, '').toLowerCase();
-  return norm(a).includes(norm(b)) || norm(b).includes(norm(a));
-}
+import { isSimilar } from '../utils/similarity.js';
 
 export async function scrapeOpenrice(city: string): Promise<Place[]> {
   try {

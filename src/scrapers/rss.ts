@@ -1,6 +1,7 @@
 import Parser from 'rss-parser';
 import { searchPlaces } from '../services/places.js';
 import type { Place } from '../types.js';
+import { isSimilar } from '../utils/similarity.js';
 
 const RSS_FEEDS = [
   { url: 'https://www.setn.com/rss.aspx?NewsType=5', name: '三立美食' },
@@ -9,12 +10,6 @@ const RSS_FEEDS = [
 ];
 
 const parser = new Parser();
-
-// Simple name similarity: check if candidate contains query (case-insensitive, ignores spaces)
-function isSimilar(candidate: string, query: string): boolean {
-  const norm = (s: string) => s.replace(/\s/g, '').toLowerCase();
-  return norm(candidate).includes(norm(query)) || norm(query).includes(norm(candidate));
-}
 
 // Extract potential place names from RSS item titles using simple heuristics
 function extractPlaceNames(title: string): string[] {

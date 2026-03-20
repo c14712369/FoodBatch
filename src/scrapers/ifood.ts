@@ -2,11 +2,7 @@ import * as cheerio from 'cheerio';
 import axios from 'axios';
 import { searchPlaces } from '../services/places.js';
 import type { Place } from '../types.js';
-
-function isSimilar(a: string, b: string): boolean {
-  const norm = (s: string) => s.replace(/\s/g, '').toLowerCase();
-  return norm(a).includes(norm(b)) || norm(b).includes(norm(a));
-}
+import { isSimilar } from '../utils/similarity.js';
 
 export async function scrapeIFood(city: string): Promise<Place[]> {
   try {
@@ -19,13 +15,13 @@ export async function scrapeIFood(city: string): Promise<Place[]> {
 
     const names: string[] = [];
     // iFood restaurant card titles — selector may need updating if DOM changes
-    $('h2.restaurant-name, .title, [class*="name"]').each((_, el) => {
+    $('h2.restaurant-name, [class*="restaurant-name"], [class*="restaurant-title"]').each((_, el) => {
       const text = $(el).text().trim();
       if (text.length >= 2 && text.length <= 15) names.push(text);
     });
 
     const results: Place[] = [];
-    for (const name of names.slice(0, 30)) {
+    for (const name of [...new Set(names)].slice(0, 30)) {
       try {
         // Pass name + city as text query to resolve the specific place
         const places = await searchPlaces({ type: '餐廳', location: `${name} ${city}` });
