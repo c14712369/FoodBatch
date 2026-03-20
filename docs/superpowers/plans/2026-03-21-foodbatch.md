@@ -1,6 +1,6 @@
 # FoodBatch Discord Bot Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Build a Discord Bot that automatically discovers popular restaurants/attractions in Taiwan and syncs them to Google My Maps for mobile browsing.
 
@@ -806,7 +806,7 @@ git commit -m "feat: 新增 RSS 爬蟲（食尚玩家、ETtoday、三立）"
 - Create: `src/scrapers/ifood.ts`
 - Create: `src/scrapers/openrice.ts`
 
-- [ ] **Step 1: Write src/scrapers/ifood.ts**
+- [x] **Step 1: Write src/scrapers/ifood.ts**
 
 ```typescript
 import * as cheerio from 'cheerio';
@@ -856,7 +856,7 @@ export async function scrapeIFood(city: string): Promise<Place[]> {
 }
 ```
 
-- [ ] **Step 2: Write src/scrapers/openrice.ts**
+- [x] **Step 2: Write src/scrapers/openrice.ts**
 
 ```typescript
 import * as cheerio from 'cheerio';
@@ -904,7 +904,7 @@ export async function scrapeOpenrice(city: string): Promise<Place[]> {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/scrapers/ifood.ts src/scrapers/openrice.ts
@@ -919,7 +919,7 @@ git commit -m "feat: 新增 iFood 與 Openrice 爬蟲"
 - Create: `src/services/appsscript.ts`
 - Create: `apps-script/sync-to-mymap.gs`
 
-- [ ] **Step 1: Write src/services/appsscript.ts**
+- [x] **Step 1: Write src/services/appsscript.ts**
 
 ```typescript
 import axios from 'axios';
@@ -944,7 +944,7 @@ export async function triggerSync(): Promise<SyncResult> {
 }
 ```
 
-- [ ] **Step 2: Write apps-script/sync-to-mymap.gs**
+- [x] **Step 2: Write apps-script/sync-to-mymap.gs**
 
 ```javascript
 // Deploy as: Execute as = Me, Who has access = Anyone
@@ -1049,7 +1049,7 @@ function escapeXml(str) {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/services/appsscript.ts apps-script/sync-to-mymap.gs
@@ -1063,7 +1063,7 @@ git commit -m "feat: 新增 Apps Script 觸發服務與 My Maps KML 同步腳本
 **Files:**
 - Create: `src/scheduler.ts`
 
-- [ ] **Step 1: Write src/scheduler.ts**
+- [x] **Step 1: Write src/scheduler.ts**
 
 ```typescript
 import cron from 'node-cron';
@@ -1168,7 +1168,7 @@ export function startScheduler(client: Client): void {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/scheduler.ts
@@ -1184,7 +1184,7 @@ git commit -m "feat: 新增每日排程任務（Places + RSS + iFood + Openrice�
 - Create: `src/commands/query.ts`
 - Create: `src/commands/sync.ts`
 
-- [ ] **Step 1: Write src/commands/search.ts**
+- [x] **Step 1: Write src/commands/search.ts**
 
 ```typescript
 import {
@@ -1246,7 +1246,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 }
 ```
 
-- [ ] **Step 2: Write src/commands/query.ts**
+- [x] **Step 2: Write src/commands/query.ts**
 
 ```typescript
 import {
@@ -1302,7 +1302,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 }
 ```
 
-- [ ] **Step 3: Write src/commands/sync.ts**
+- [x] **Step 3: Write src/commands/sync.ts**
 
 ```typescript
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
@@ -1324,7 +1324,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 }
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/commands/
@@ -1338,7 +1338,7 @@ git commit -m "feat: 新增 /搜尋、/查詢、/同步 指令"
 **Files:**
 - Create: `src/index.ts`
 
-- [ ] **Step 1: Write src/index.ts**
+- [x] **Step 1: Write src/index.ts**
 
 ```typescript
 import 'dotenv/config';
@@ -1397,14 +1397,14 @@ main().catch(err => {
 });
 ```
 
-- [ ] **Step 2: Verify build compiles**
+- [x] **Step 2: Verify build compiles**
 
 ```bash
 npm run build
 ```
 Expected: No TypeScript errors, `dist/` directory created.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/index.ts
@@ -1415,7 +1415,7 @@ git commit -m "feat: 新增 Bot 入口點與指令註冊"
 
 ## Task 13: Environment Setup & Smoke Test
 
-- [ ] **Step 1: Copy .env.example to .env and fill in values**
+- [x] **Step 1: Copy .env.example to .env and fill in values**
 
 Follow these steps to get each value:
 1. `DISCORD_TOKEN` + `DISCORD_CLIENT_ID`: Discord Developer Portal → Your App → Bot
@@ -1425,14 +1425,14 @@ Follow these steps to get each value:
 5. `GOOGLE_SERVICE_ACCOUNT_JSON`: Google Cloud Console → IAM → Service Accounts → Create → Download JSON → share the Google Sheet with the service account email
 6. `APPS_SCRIPT_WEBHOOK_URL` + `APPS_SCRIPT_SECRET` + `MY_MAPS_FILE_ID`: See Task 14
 
-- [ ] **Step 2: Run all unit tests**
+- [x] **Step 2: Run all unit tests**
 
 ```bash
 npm test
 ```
 Expected: All tests pass.
 
-- [ ] **Step 3: Run in dev mode to verify bot comes online**
+- [x] **Step 3: Run in dev mode to verify bot comes online**
 
 ```bash
 npm run dev
@@ -1443,14 +1443,14 @@ Expected: `[Bot] 已登入為 YourBot#1234`
 
 ## Task 14: Google Apps Script Deployment
 
-- [ ] **Step 1: Create Google My Maps**
+- [x] **Step 1: Create Google My Maps**
 
 1. Go to `https://www.google.com/maps/d/`
 2. Create a new map
 3. Add 4 layers: 餐廳, 咖啡廳, 景點, 夜市
 4. Get the file ID from the share URL: `https://www.google.com/maps/d/edit?mid=XXXXXXX` — `XXXXXXX` is your `MY_MAPS_FILE_ID`
 
-- [ ] **Step 2: Deploy Apps Script**
+- [x] **Step 2: Deploy Apps Script**
 
 1. Go to `https://script.google.com/`
 2. Create new project → paste contents of `apps-script/sync-to-mymap.gs`
@@ -1461,7 +1461,7 @@ Expected: `[Bot] 已登入為 YourBot#1234`
 4. Deploy → New deployment → Web App → Execute as: Me → Anyone → Deploy
 5. Copy the deployment URL → set as `APPS_SCRIPT_WEBHOOK_URL` in `.env`
 
-- [ ] **Step 3: Test sync manually**
+- [x] **Step 3: Test sync manually**
 
 > Note: `ContentService` in Apps Script cannot set HTTP status codes, so an invalid token returns `{ error: 'Unauthorized' }` with HTTP 200 (not 403). The Node.js client checks the response body for an error field.
 
@@ -1479,7 +1479,7 @@ Expected: `{ synced: 0 }` (no data yet, no error)
 
 ## Task 15: Final Integration Test & Deploy
 
-- [ ] **Step 1: Run a manual scheduler job**
+- [x] **Step 1: Run a manual scheduler job**
 
 ```bash
 node --input-type=module -e "
@@ -1491,15 +1491,15 @@ client.login(process.env.DISCORD_TOKEN).then(() => runDailyJob(client)).then(con
 "
 ```
 
-- [ ] **Step 2: Verify in Google Sheet that rows were added**
+- [x] **Step 2: Verify in Google Sheet that rows were added**
 
 Open the Google Sheet — should see new rows with `synced=FALSE`.
 
-- [ ] **Step 3: Verify in Discord that /搜尋 works**
+- [x] **Step 3: Verify in Discord that /搜尋 works**
 
 In Discord, type `/搜尋 類型:餐廳 地點:台北`
 
-- [ ] **Step 4: Deploy to Fly.io**
+- [x] **Step 4: Deploy to Fly.io**
 
 ```bash
 # Install Fly CLI if not installed
@@ -1514,7 +1514,7 @@ flyctl secrets set DISCORD_TOKEN="..." DISCORD_CLIENT_ID="..." # etc.
 flyctl deploy
 ```
 
-- [ ] **Step 5: Final commit**
+- [x] **Step 5: Final commit**
 
 ```bash
 git add .
