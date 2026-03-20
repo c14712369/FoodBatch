@@ -1,0 +1,7 @@
+app = "foodbatch-bot"
+primary_region = "nrt"
+
+[build]
+
+[env]
+  NODE_ENV = "production"
