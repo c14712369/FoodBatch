@@ -10,7 +10,18 @@ const HEADERS = [
 const QUEUE_HEADERS = ['name', 'city', 'source', 'added_at'];
 const QUEUE_TAB_NAME = 'scraped_queue';
 
-// ... (getAuth and getSheets remain same)
+function getAuth() {
+  const credentials = JSON.parse(config.google.serviceAccountJson);
+  return new google.auth.GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+}
+
+async function getSheets() {
+  const auth = getAuth();
+  return google.sheets({ version: 'v4', auth });
+}
 
 export async function bootstrapSheet(): Promise<void> {
   const sheets = await getSheets();
@@ -44,6 +55,20 @@ async function createTab(sheets: any, title: string, headers: string[]) {
     valueInputOption: 'RAW',
     requestBody: { values: [headers] },
   });
+}
+
+export async function getExistingScrapedNames(): Promise<string[]> {
+  const sheets = await getSheets();
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: config.google.sheetsId,
+      range: `${QUEUE_TAB_NAME}!A2:A`, // 只讀取 A 欄 (店名)
+    });
+    const rows = res.data.values ?? [];
+    return rows.map(r => r[0] ?? '').filter(n => n !== '');
+  } catch (e) {
+    return []; // 如果分頁還不存在，回傳空陣列
+  }
 }
 
 export async function appendScrapedNames(items: Array<{ name: string, city: string, source: string }>): Promise<void> {

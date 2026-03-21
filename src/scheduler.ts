@@ -4,9 +4,10 @@ import { searchPlaces } from './services/places.js';
 import { scrapeRssNames } from './scrapers/rss.js';
 import { scrapeIFoodNames } from './scrapers/ifood.js';
 import { scrapeWalkerLandNames } from './scrapers/walkerland.js';
-import { getAllPlaces, appendPlaces, appendScrapedNames } from './services/sheets.js';
+import { getAllPlaces, appendPlaces, appendScrapedNames, getExistingScrapedNames } from './services/sheets.js';
 import { triggerSync } from './services/appsscript.js';
 import { filterNewPlaces } from './utils/dedup.js';
+import { isSimilar } from './utils/similarity.js';
 import { config } from './config.js';
 import type { Place, PlaceType, RunSummary } from './types.js';
 
@@ -75,11 +76,20 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
     }
   }
 
-  // 3. 直接寫入爬蟲暫存分頁
+  // 3. 直接寫入爬蟲暫存分頁 (去重後寫入)
+  const existingScraped = await getExistingScrapedNames();
   const uniqueScraped = [...new Map(rawScrapedItems.map(item => [item.name, item])).values()];
-  if (uniqueScraped.length > 0) {
-    await appendScrapedNames(uniqueScraped);
-    console.log(`[Scraper] 已將 ${uniqueScraped.length} 筆暫存店名寫入 scraped_queue`);
+  
+  // 執行跨次去重：只保留不存在於暫存分頁，且也不存在於正式資料庫的店名
+  const reallyNewScraped = uniqueScraped.filter(item => {
+    const inQueue = existingScraped.some(name => isSimilar(name, item.name));
+    const inMain = existing.some(p => isSimilar(p.name, item.name));
+    return !inQueue && !inMain;
+  });
+
+  if (reallyNewScraped.length > 0) {
+    await appendScrapedNames(reallyNewScraped);
+    console.log(`[Scraper] 已將 ${reallyNewScraped.length} 筆全新暫存店名寫入 scraped_queue`);
   }
 
   // 4. 處理主要搜尋結果
