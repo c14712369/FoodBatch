@@ -5,40 +5,41 @@ import type { Place } from '../types.js';
 import { isSimilar } from '../utils/similarity.js';
 
 export async function scrapeIFoodNames(city: string): Promise<string[]> {
-  try {
-    // 愛食記目前的探索網址
-    const url = `https://ifoodie.tw/explore/${encodeURIComponent(city)}/list`;
-    const res = await axios.get(url, {
-      headers: { 
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' 
-      },
-      timeout: 10000,
-    });
-    const $ = cheerio.load(res.data as string);
+  const allNames: string[] = [];
+  
+  // 一次抓取前 5 頁，大幅增加資料量
+  for (let page = 1; page <= 5; page++) {
+    try {
+      const url = `https://ifoodie.tw/explore/${encodeURIComponent(city)}/list?page=${page}`;
+      const res = await axios.get(url, {
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' 
+        },
+        timeout: 10000,
+      });
+      const $ = cheerio.load(res.data as string);
 
-    const names: string[] = [];
-    // 鎖定更精確的標題選擇器，並過濾掉雜訊
-    $('.title-text, a.title').each((_, el) => {
-      const text = $(el).text().trim();
-      // 過濾規則：
-      // 1. 長度在 2-20 字之間
-      // 2. 不能包含「則評論」、「愛食記」、「登入」
-      // 3. 不能是純數字或括號開頭
-      if (
-        text.length >= 2 && 
-        text.length <= 20 && 
-        !text.includes('則評論') && 
-        !text.includes('愛食記') &&
-        !text.startsWith('(') &&
-        !/^\d+$/.test(text)
-      ) {
-        names.push(text);
-      }
-    });
+      $('.title-text, a.title').each((_, el) => {
+        let text = $(el).text().trim();
+        const isNoise = 
+          text.includes('評論') || text.includes('食記') || text.includes('人氣') ||
+          text.includes('收藏') || text.includes('愛食記') || text.includes('登入') ||
+          text.startsWith('(') || text.startsWith('（') || /^\d+$/.test(text) ||
+          text.length < 2 || text.length > 25;
 
-    return [...new Set(names)].slice(0, 20);
-  } catch (err) {
-    console.warn('[iFood] 抓取失敗:', (err as Error).message);
-    return [];
+        if (!isNoise) {
+          text = text.replace(/[\(\（].*[\)\）]/g, '').trim();
+          if (text.length >= 2) allNames.push(text);
+        }
+      });
+      
+      // 稍微延遲避免被封鎖
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (err) {
+      console.warn(`[iFood] ${city} 第 ${page} 頁抓取失敗:`, (err as Error).message);
+      break; // 如果某一頁失敗，通常後面的分頁也會失敗
+    }
   }
+
+  return [...new Set(allNames)];
 }
