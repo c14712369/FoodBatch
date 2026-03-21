@@ -13,7 +13,7 @@
 | **品質過濾器 3.0** | 內建「防打卡店」機制，自動過濾虛高評分，保留真實口碑名店 |
 | **生活化分類** | 自動區分餐廳、咖啡廳、甜點、藝術、購物、景點、夜市 |
 | **Google Sheets 整合** | 使用試算表作為雲端資料庫，方便隨時檢視與匯出 KML 地圖 |
-| **Discord 互動** | 支援 `/搜尋`、`/查詢` 指令，並在每日執行後發送摘要報告 |
+| **Discord 分層通報** | 支援 `/搜尋`、`/查詢` 指令，並在每日執行後發送清晰的「正式地圖」與「爬蟲暫存」分層摘要報告 |
 
 ---
 
@@ -28,14 +28,23 @@
 
 ---
 
-## 📍 搜尋範圍
+## 📍 搜尋範圍與資料來源
 
-本機器人旨在極大化利用 Google Cloud 每月 $200 美金的免費額度：
+本系統採用「情報挖掘」與「高品質驗證」雙軌並行的策略，旨在極大化利用 Google Cloud 每月 $200 美金的免費額度：
 
+### 1. 廣域高品質搜尋 (使用 Google Places API)
+負責建立正式的美食地圖，消耗 API 額度：
 *   **台灣**：台北、新北、花蓮
 *   **日本**：東京、大阪、京都、福岡、沖繩、札幌、名古屋、奈良、神戶
 *   **國際**：香港
 *   **深度挖掘**：針對台北、新北、香港、東京、大阪執行額外的熱門料理（火鍋、日式、燒烤等）細分搜尋。
+
+### 2. 網路熱度採集 (0 成本爬蟲)
+負責挖掘全台灣的潛在名單，直接存入 `scraped_queue` 暫存分頁，不消耗 API 額度：
+*   **愛食記 (iFood)**：涵蓋全台灣各縣市前 5 頁的熱門食記名單。
+*   **窩客島 (WalkerLand)**：匯集專業美食部落客的城市推薦。
+*   **PTT 美食板 (Food 版)**：最真實的鄉民口碑來源。
+*   **聯合新聞網 (UDN 美食)**：權威媒體的最新餐飲情報。
 
 ---
 
@@ -57,6 +66,7 @@ npm install
 *   `DISCORD_SUMMARY_CHANNEL_ID`
 *   `GOOGLE_API_KEY`
 *   `GOOGLE_SHEETS_ID`
+*   `GOOGLE_SHEET_TAB_NAME` (設定為 `places`)
 *   `GOOGLE_SERVICE_ACCOUNT_JSON` (請貼上單行 JSON 字串)
 *   `APPS_SCRIPT_WEBHOOK_URL`
 *   `APPS_SCRIPT_SECRET`
@@ -69,7 +79,8 @@ GitHub Actions 會根據 `.github/workflows/daily-job.yml` 的設定，在每日
 
 ## 📂 檔案結構
 *   `src/index.ts`: 機器人入口點與指令處理。
-*   `src/scheduler.ts`: 核心採集邏輯與 GitHub Actions 執行入口。
+*   `src/scheduler.ts`: 核心採集邏輯、去重機制與 Discord 通報。
 *   `src/services/`: 整合 Google Places, Sheets 與 Apps Script。
+*   `src/scrapers/`: 包含 iFood, WalkerLand 與 RSS 爬蟲腳本。
 *   `src/utils/`: 包含分類、去重與防打卡店邏輯。
 *   `scripts/export-kml.ts`: 匯出資料至 Google My Maps 的工具。
