@@ -1,4 +1,4 @@
-export type PlaceType = '餐廳' | '咖啡廳' | '景點' | '夜市';
+export type PlaceType = '餐廳' | '咖啡廳' | '甜點' | '藝術' | '購物' | '景點' | '夜市';
 
 export interface Place {
   place_id: string;

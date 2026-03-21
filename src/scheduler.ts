@@ -10,13 +10,21 @@ import { filterNewPlaces } from './utils/dedup.js';
 import { config } from './config.js';
 import type { Place, PlaceType, RunSummary } from './types.js';
 
-const CITIES = ['台北', '台中', '高雄', '台南', '新北'];
-const TYPES: PlaceType[] = ['餐廳', '咖啡廳', '景點', '夜市'];
+const CITIES = [
+  '台北', '新北', '花蓮', '香港',
+  '東京', '大阪', '京都', '福岡', '沖繩', '札幌', '名古屋', '奈良', '神戶'
+];
+const TYPES: PlaceType[] = ['餐廳', '咖啡廳', '甜點', '藝術', '購物', '景點', '夜市'];
+// 針對核心城市增加熱門料理類型搜尋，以提升資料量並吃滿額度
+const CUISINE_EXTENSIONS = ['火鍋', '日式', '燒烤', '漢堡', '義大利麵'];
+const CORE_CITIES = ['台北', '新北', '香港', '東京', '大阪'];
 
 export async function runDailyJob(client: Client): Promise<RunSummary> {
   const summary: RunSummary = {
     total: 0,
-    byType: { '餐廳': 0, '咖啡廳': 0, '景點': 0, '夜市': 0 },
+    byType: { 
+      '餐廳': 0, '咖啡廳': 0, '甜點': 0, '藝術': 0, '購物': 0, '景點': 0, '夜市': 0 
+    },
     errors: [],
   };
 
@@ -25,6 +33,7 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
 
   // 1. Google Places API (primary)
   outer: for (const city of CITIES) {
+    // 基本類型搜尋
     for (const type of TYPES) {
       try {
         const places = await searchPlaces({ type, location: city });
@@ -33,7 +42,19 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
         const msg = `Places API 失敗 (${city}/${type}): ${(err as Error).message}`;
         summary.errors.push(msg);
         console.error(msg);
-        break outer; // Exit both loops — quota likely exceeded
+        if ((err as any).response?.status === 429) break outer; // Quota exceeded
+      }
+    }
+
+    // 針對核心城市執行深度料理搜尋 (餐廳類型擴展)
+    if (CORE_CITIES.includes(city)) {
+      for (const cuisine of CUISINE_EXTENSIONS) {
+        try {
+          const places = await searchPlaces({ type: '餐廳', location: city, cuisine });
+          collected.push(...places);
+        } catch (err) {
+          console.error(`深度搜尋失敗 (${city}/${cuisine}):`, (err as Error).message);
+        }
       }
     }
   }

@@ -1,12 +1,13 @@
 import Parser from 'rss-parser';
+import axios from 'axios';
 import { searchPlaces } from '../services/places.js';
 import type { Place } from '../types.js';
 import { isSimilar } from '../utils/similarity.js';
 
 const RSS_FEEDS = [
-  { url: 'https://www.setn.com/rss.aspx?NewsType=5', name: '三立美食' },
-  { url: 'https://www.ettoday.net/news/food/rss2.xml', name: 'ETtoday美食' },
-  { url: 'https://www.setn.com/rss.aspx?NewsType=97', name: '食尚玩家' },
+  { url: 'https://www.ptt.cc/atom/Food.xml', name: 'PTT美食板', headers: { Cookie: 'over18=1' } },
+  { url: 'https://feeds.feedburner.com/rsscna/lifehealth', name: '中央社生活健康', headers: {} },
+  { url: 'https://feeds.feedburner.com/rsscna/local', name: '中央社地方', headers: {} },
 ];
 
 const parser = new Parser();
@@ -23,7 +24,11 @@ export async function scrapeRssPlaces(city: string): Promise<Place[]> {
 
   for (const feed of RSS_FEEDS) {
     try {
-      const parsed = await parser.parseURL(feed.url);
+      const res = await axios.get(feed.url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FoodBot/1.0)', ...feed.headers },
+        timeout: 10000,
+      });
+      const parsed = await parser.parseString(res.data as string);
       const recentItems = parsed.items.slice(0, 20);
 
       for (const item of recentItems) {

@@ -1,4 +1,18 @@
+# 依賴與建置輸出
 node_modules/
 dist/
-.env
 *.js.map
+
+# 敏感資料 (絕對不可上傳)
+.env
+*.json
+!package.json
+!tsconfig.json
+!package-lock.json
+
+# 作業系統暫存
+.DS_Store
+Thumbs.db
+
+# 匯出資料夾
+output/
