@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { Client } from 'discord.js';
+import { searchPlaces } from './services/places.js';
 import { scrapeRssNames } from './scrapers/rss.js';
 import { scrapeIFoodNames } from './scrapers/ifood.js';
 import { getAllPlaces, appendPlaces } from './services/sheets.js';
