@@ -79,8 +79,7 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
   // 3. 直接寫入爬蟲暫存分頁 (去重後寫入)
   const existingScraped = await getExistingScrapedNames();
   const uniqueScraped = [...new Map(rawScrapedItems.map(item => [item.name, item])).values()];
-  
-  // 執行跨次去重：只保留不存在於暫存分頁，且也不存在於正式資料庫的店名
+
   const reallyNewScraped = uniqueScraped.filter(item => {
     const inQueue = existingScraped.some(name => isSimilar(name, item.name));
     const inMain = existing.some(p => isSimilar(p.name, item.name));
@@ -92,7 +91,7 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
     console.log(`[Scraper] 已將 ${reallyNewScraped.length} 筆全新暫存店名寫入 scraped_queue`);
   }
 
-  // 4. 處理主要搜尋結果
+  // 4. 處理主要搜尋結果 (去重並寫入主分頁)
   const newPlaces = filterNewPlaces(collected, existing);
   if (newPlaces.length > 0) {
     await appendPlaces(newPlaces);
@@ -108,17 +107,23 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
   try {
     const channel = await client.channels.fetch(config.discord.summaryChannelId);
     if (channel?.isTextBased()) {
-      const errorLine = summary.errors.length > 0 ? `\n⚠️ ${summary.errors.length} 個錯誤` : '';
-      await (channel as any).send(
-        `**今日新增 ${summary.total} 筆**\n` +
-        `餐廳 ${summary.byType['餐廳']} | 咖啡廳 ${summary.byType['咖啡廳']} | 景點 ${summary.byType['景點']} | 夜市 ${summary.byType['夜市']}` +
-        ` | 甜點 ${summary.byType['甜點']} | 藝術 ${summary.byType['藝術']} | 購物 ${summary.byType['購物']}` +
-        errorLine
-      );
+      const errorLine = summary.errors.length > 0 ? `\n⚠️ 偵測到 ${summary.errors.length} 個錯誤` : '';
+      const summaryEmbed = 
+        `**🚀 FoodBatch 每日採集報告**\n\n` +
+        `**📍 正式地圖更新 (Google API):**\n` +
+        `餐廳 ${summary.byType['餐廳']} | 咖啡廳 ${summary.byType['咖啡廳']} | 甜點 ${summary.byType['甜點']} | 藝術 ${summary.byType['藝術']}\n` +
+        `購物 ${summary.byType['購物']} | 景點 ${summary.byType['景點']} | 夜市 ${summary.byType['夜市']}\n` +
+        `*共計新增 ${summary.total} 筆高品質地點*\n\n` +
+        `**🔍 網路熱議採集 (爬蟲暫存):**\n` +
+        `今日共挖掘到 **${reallyNewScraped.length}** 筆全新潛在名單，已存入 \`scraped_queue\`。` +
+        errorLine;
+
+      await (channel as any).send(summaryEmbed);
     }
   } catch (err) {
     console.error('[Scheduler] Discord 通知失敗:', (err as Error).message);
   }
+
 
   return summary;
 }
