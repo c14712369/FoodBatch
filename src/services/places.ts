@@ -15,12 +15,17 @@ const TYPE_QUERY: Record<PlaceType, string> = {
   '夜市': '夜市',
 };
 
-const RATING_THRESHOLD = 4.0;
 const REVIEW_THRESHOLD = 200;
 const REQUEST_DELAY_MS = 300;
 
 export async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getRatingThreshold(type: PlaceType): number {
+  // 對於美食類別要求較高 (4.2)，景點與生活類別維持 4.0
+  const higherThresholdTypes: PlaceType[] = ['餐廳', '咖啡廳', '甜點'];
+  return higherThresholdTypes.includes(type) ? 4.2 : 4.0;
 }
 
 function isSuspiciousCheckInStore(p: RawPlace): boolean {
@@ -85,8 +90,10 @@ export async function searchPlaces(opts: SearchOptions): Promise<Place[]> {
   return raw
     .filter(p => {
       // 基礎過濾 (適用於所有類別)
-      if (p.rating < RATING_THRESHOLD) {
-        // console.log(`[Filter] 低評分跳過: ${p.displayName.text} (${p.rating}星)`);
+      const dynamicRatingThreshold = getRatingThreshold(opts.type);
+      
+      if (p.rating < dynamicRatingThreshold) {
+        // console.log(`[Filter] 低評分跳過: ${p.displayName.text} (${p.rating}星 < ${dynamicRatingThreshold})`);
         return false;
       }
       if (p.userRatingCount < REVIEW_THRESHOLD) {
