@@ -3,6 +3,7 @@ import { Client } from 'discord.js';
 import { searchPlaces } from './services/places.js';
 import { scrapeRssNames } from './scrapers/rss.js';
 import { scrapeIFoodNames } from './scrapers/ifood.js';
+import { scrapeWalkerLandNames } from './scrapers/walkerland.js';
 import { getAllPlaces, appendPlaces, appendScrapedNames } from './services/sheets.js';
 import { triggerSync } from './services/appsscript.js';
 import { filterNewPlaces } from './utils/dedup.js';
@@ -66,6 +67,9 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
       
       const iFoodNames = await scrapeIFoodNames(city);
       iFoodNames.forEach(name => rawScrapedItems.push({ name, city, source: 'iFood' }));
+
+      const walkerNames = await scrapeWalkerLandNames(city);
+      walkerNames.forEach(name => rawScrapedItems.push({ name, city, source: 'WalkerLand' }));
     } catch (e) {
       console.warn(`[Scraper] ${city} 爬取失敗:`, (e as Error).message);
     }
