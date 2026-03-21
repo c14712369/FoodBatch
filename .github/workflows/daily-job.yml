@@ -27,24 +27,26 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Debug Secrets Existence
+      - name: Debug Variable Check
         run: |
-          echo "Checking secret variables..."
-          [ -n "${{ secrets.DISCORD_TOKEN }}" ] && echo "DISCORD_TOKEN exists" || echo "DISCORD_TOKEN is MISSING"
-          [ -n "${{ secrets.GOOGLE_API_KEY }}" ] && echo "GOOGLE_API_KEY exists" || echo "GOOGLE_API_KEY is MISSING"
+          echo "--- Secrets Existence ---"
+          [ -n "${{ secrets.DISCORD_TOKEN }}" ] && echo "Secret DISCORD_TOKEN: EXISTS" || echo "Secret DISCORD_TOKEN: MISSING"
+          echo "--- Variables Existence ---"
+          [ -n "${{ vars.DISCORD_TOKEN }}" ] && echo "Variable DISCORD_TOKEN: EXISTS" || echo "Variable DISCORD_TOKEN: MISSING"
 
       - name: Run Daily Scraper
         env:
-          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
-          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
-          DISCORD_SUMMARY_CHANNEL_ID: ${{ secrets.DISCORD_SUMMARY_CHANNEL_ID }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+          # 同時嘗試從 secrets 和 vars 讀取，以防使用者設錯地方
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN || vars.DISCORD_TOKEN }}
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID || vars.DISCORD_CLIENT_ID }}
+          DISCORD_SUMMARY_CHANNEL_ID: ${{ secrets.DISCORD_SUMMARY_CHANNEL_ID || vars.DISCORD_SUMMARY_CHANNEL_ID }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY || vars.GOOGLE_API_KEY }}
+          GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID || vars.GOOGLE_SHEETS_ID }}
           GOOGLE_SHEET_TAB_NAME: "places"
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-          APPS_SCRIPT_WEBHOOK_URL: ${{ secrets.APPS_SCRIPT_WEBHOOK_URL }}
-          APPS_SCRIPT_SECRET: ${{ secrets.APPS_SCRIPT_SECRET }}
-          MY_MAPS_FILE_ID: ${{ secrets.MY_MAPS_FILE_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON || vars.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          APPS_SCRIPT_WEBHOOK_URL: ${{ secrets.APPS_SCRIPT_WEBHOOK_URL || vars.APPS_SCRIPT_WEBHOOK_URL }}
+          APPS_SCRIPT_SECRET: ${{ secrets.APPS_SCRIPT_SECRET || vars.APPS_SCRIPT_SECRET }}
+          MY_MAPS_FILE_ID: ${{ secrets.MY_MAPS_FILE_ID || vars.MY_MAPS_FILE_ID }}
         run: |
           node --input-type=module -e "
           import 'dotenv/config';
