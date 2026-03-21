@@ -1,12 +1,11 @@
 import cron from 'node-cron';
 import { Client } from 'discord.js';
-import { searchPlaces } from './services/places.js';
-import { scrapeRssPlaces } from './scrapers/rss.js';
-import { scrapeIFood } from './scrapers/ifood.js';
-import { scrapeOpenrice } from './scrapers/openrice.js';
+import { scrapeRssNames } from './scrapers/rss.js';
+import { scrapeIFoodNames } from './scrapers/ifood.js';
 import { getAllPlaces, appendPlaces } from './services/sheets.js';
 import { triggerSync } from './services/appsscript.js';
 import { filterNewPlaces } from './utils/dedup.js';
+import { isSimilar } from './utils/similarity.js';
 import { config } from './config.js';
 import type { Place, PlaceType, RunSummary } from './types.js';
 
@@ -31,50 +30,68 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
   const existing = await getAllPlaces();
   const collected: Place[] = [];
 
-  // 1. Google Places API (primary)
+  // 1. Google Places API (主要來源 - 消耗約 110-115 次請求)
   outer: for (const city of CITIES) {
-    // 基本類型搜尋
     for (const type of TYPES) {
       try {
         const places = await searchPlaces({ type, location: city });
         collected.push(...places);
       } catch (err) {
-        const msg = `Places API 失敗 (${city}/${type}): ${(err as Error).message}`;
-        summary.errors.push(msg);
-        console.error(msg);
-        if ((err as any).response?.status === 429) break outer; // Quota exceeded
+        if ((err as any).response?.status === 429) {
+          summary.errors.push('API 配額已達上限，停止主要搜尋');
+          break outer;
+        }
       }
     }
 
-    // 針對核心城市執行深度料理搜尋 (餐廳類型擴展)
     if (CORE_CITIES.includes(city)) {
       for (const cuisine of CUISINE_EXTENSIONS) {
         try {
           const places = await searchPlaces({ type: '餐廳', location: city, cuisine });
           collected.push(...places);
         } catch (err) {
-          console.error(`深度搜尋失敗 (${city}/${cuisine}):`, (err as Error).message);
+          if ((err as any).response?.status === 429) break outer;
         }
       }
     }
   }
 
-  // 2. RSS sources (supplementary, non-fatal)
-  for (const city of CITIES) {
-    const rssPlaces = await scrapeRssPlaces(city);
-    collected.push(...rssPlaces);
+  // 2. 補充爬蟲來源 (不直接消耗 API)
+  // 我們只針對台灣城市執行補充爬蟲
+  const TW_CITIES = ['台北', '新北', '花蓮'];
+  const scrapedNames: { name: string, city: string }[] = [];
+
+  for (const city of TW_CITIES) {
+    const rssNames = await scrapeRssNames(city);
+    const iFoodNames = await scrapeIFoodNames(city);
+    [...rssNames, ...iFoodNames].forEach(n => scrapedNames.push({ name: n, city }));
   }
 
-  // 3. iFood (supplementary, non-fatal)
-  for (const city of CITIES) {
-    const iFoodPlaces = await scrapeIFood(city);
-    collected.push(...iFoodPlaces);
-  }
-
-  // 4. Openrice (supplementary, non-fatal)
-  for (const city of CITIES) {
-    const openricePlaces = await scrapeOpenrice(city);
-    collected.push(...openricePlaces);
+  // 3. 處理補充爬蟲抓到的店名 (去重並限量查詢，避免爆額度)
+  // 每天只額外處理 10 間爬蟲抓到的新店名
+  const uniqueNames = [...new Map(scrapedNames.map(item => [item.name, item])).values()];
+  let additionalCount = 0;
+  for (const item of uniqueNames) {
+    if (additionalCount >= 10) break; // 嚴格限制，保留配額給主搜尋
+    
+    // 檢查是否已在本次收集或資料庫中
+    const isExist = existing.some(p => isSimilar(p.name, item.name)) || 
+                    collected.some(p => isSimilar(p.name, item.name));
+    
+    if (!isExist) {
+      try {
+        const places = await searchPlaces({ type: '餐廳', location: `${item.name} ${item.city}` });
+        if (places.length > 0) {
+          const match = places.find(p => isSimilar(p.name, item.name));
+          if (match) {
+            collected.push({ ...match, source: '爬蟲補充' });
+            additionalCount++;
+          }
+        }
+      } catch {
+        break; // 可能是配額滿了
+      }
+    }
   }
 
   // Dedup and write
