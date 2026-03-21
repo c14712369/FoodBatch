@@ -9,6 +9,8 @@ on:
 jobs:
   run-daily-job:
     runs-on: ubuntu-latest
+    # 如果您有設定環境，請取消下面這一行的註解並將名稱改為您的環境名稱（例如 production）
+    # environment: production 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,11 +27,11 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Debug Secrets
+      - name: Debug Secrets Existence
         run: |
-          echo "Checking Secrets existence (will show 'set' or 'empty'):"
-          if [ -z "${{ secrets.DISCORD_TOKEN }}" ]; then echo "DISCORD_TOKEN is EMPTY"; else echo "DISCORD_TOKEN is set"; fi
-          if [ -z "${{ secrets.GOOGLE_API_KEY }}" ]; then echo "GOOGLE_API_KEY is EMPTY"; else echo "GOOGLE_API_KEY is set"; fi
+          echo "Checking secret variables..."
+          [ -n "${{ secrets.DISCORD_TOKEN }}" ] && echo "DISCORD_TOKEN exists" || echo "DISCORD_TOKEN is MISSING"
+          [ -n "${{ secrets.GOOGLE_API_KEY }}" ] && echo "GOOGLE_API_KEY exists" || echo "GOOGLE_API_KEY is MISSING"
 
       - name: Run Daily Scraper
         env:
