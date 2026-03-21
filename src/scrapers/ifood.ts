@@ -17,11 +17,21 @@ export async function scrapeIFoodNames(city: string): Promise<string[]> {
     const $ = cheerio.load(res.data as string);
 
     const names: string[] = [];
-    // 嘗試多種可能的選擇器，愛食記的店名通常在 title-text 或特定 a 標籤內
-    $('.title-text, .restaurant-name, a[href*="/restaurant/"]').each((_, el) => {
+    // 鎖定更精確的標題選擇器，並過濾掉雜訊
+    $('.title-text, a.title').each((_, el) => {
       const text = $(el).text().trim();
-      // 過濾掉明顯不是店名的字串
-      if (text.length >= 2 && text.length <= 20 && !text.includes('愛食記') && !text.includes('登入')) {
+      // 過濾規則：
+      // 1. 長度在 2-20 字之間
+      // 2. 不能包含「則評論」、「愛食記」、「登入」
+      // 3. 不能是純數字或括號開頭
+      if (
+        text.length >= 2 && 
+        text.length <= 20 && 
+        !text.includes('則評論') && 
+        !text.includes('愛食記') &&
+        !text.startsWith('(') &&
+        !/^\d+$/.test(text)
+      ) {
         names.push(text);
       }
     });

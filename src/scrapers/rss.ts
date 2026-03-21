@@ -7,34 +7,33 @@ import { isSimilar } from '../utils/similarity.js';
 const RSS_FEEDS = [
   { url: 'https://www.ptt.cc/atom/Food.xml', name: 'PTT美食板', headers: { Cookie: 'over18=1' } },
   { url: 'https://udn.com/rssfeed/news/2/6644?ch=udn', name: '聯合新聞網美食', headers: {} },
-  { url: 'https://city.gvm.com.tw/rss/category/13', name: '遠見城市美食', headers: {} },
 ];
 
 const parser = new Parser();
 
-// 提取標題中可能的店名（通常在 [食記] 之後或是特定引號內）
+// 提取標題中可能的店名
 function extractPlaceNames(title: string): string[] {
-  // 匹配常見的括號或引號內的店名，或是特定的中文模式
-  const patterns = [
-    /\[食記\]\s*([^-\s]+)/,
-    /「([^」]+)」/,
-    /『([^』]+)』/,
-    /【([^】]+)】/
-  ];
-  
   const names: string[] = [];
-  for (const pattern of patterns) {
+  
+  // 1. 優先匹配括號或引號內的店名 (最準確)
+  const bracketPatterns = [/「([^」]+)」/, /『([^』]+)』/, /【([^】]+)】/];
+  for (const pattern of bracketPatterns) {
     const match = title.match(pattern);
     if (match && match[1]) {
       const name = match[1].trim();
       if (name.length >= 2 && name.length <= 15) names.push(name);
     }
   }
-  
-  // 如果沒匹配到括號，嘗試匹配 2-10 個中文字
-  if (names.length === 0) {
-    const matches = title.match(/[\u4e00-\u9fa5]{2,10}(?:餐廳|小館|咖啡|甜點|火鍋|燒烤)/g);
-    if (matches) names.push(...matches);
+
+  // 2. 如果是 PTT [食記] 格式，嘗試抓取 [食記] 之後但第一個空格之前的文字
+  const pttMatch = title.match(/\[食記\]\s*([^-\s（]+)/);
+  if (pttMatch && pttMatch[1]) {
+    const name = pttMatch[1].trim();
+    // 過濾掉純地名 (如 台北、大安區)
+    const dists = ['台北', '新北', '台中', '高雄', '台南', '花蓮', '宜蘭', '桃園', '中正', '大安', '中山', '松山', '萬華', '信義', '內湖', '南港', '士林', '北投', '板橋', '三重', '中和', '永和', '新莊', '新店', '土城', '蘆洲', '汐止', '樹林'];
+    if (!dists.some(d => name === d || name === d + '區' || name === d + '市')) {
+      if (name.length >= 2 && name.length <= 15) names.push(name);
+    }
   }
 
   return [...new Set(names)];
