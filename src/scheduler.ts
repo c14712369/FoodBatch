@@ -1,12 +1,10 @@
 import cron from 'node-cron';
 import { Client } from 'discord.js';
-import { searchPlaces } from './services/places.js';
 import { scrapeRssNames } from './scrapers/rss.js';
 import { scrapeIFoodNames } from './scrapers/ifood.js';
-import { getAllPlaces, appendPlaces } from './services/sheets.js';
+import { getAllPlaces, appendPlaces, appendScrapedNames } from './services/sheets.js';
 import { triggerSync } from './services/appsscript.js';
 import { filterNewPlaces } from './utils/dedup.js';
-import { isSimilar } from './utils/similarity.js';
 import { config } from './config.js';
 import type { Place, PlaceType, RunSummary } from './types.js';
 
@@ -57,47 +55,35 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
     }
   }
 
-  // 2. 補充爬蟲來源 (不直接消耗 API)
-  // 我們只針對台灣城市執行補充爬蟲
+  // 2. 補充爬蟲來源 (完全不消耗 API)
   const TW_CITIES = ['台北', '新北', '花蓮'];
-  const scrapedNames: { name: string, city: string }[] = [];
+  const rawScrapedItems: Array<{ name: string, city: string, source: string }> = [];
 
   for (const city of TW_CITIES) {
-    const rssNames = await scrapeRssNames(city);
-    const iFoodNames = await scrapeIFoodNames(city);
-    [...rssNames, ...iFoodNames].forEach(n => scrapedNames.push({ name: n, city }));
-  }
-
-  // 3. 處理補充爬蟲抓到的店名 (去重並限量查詢，避免爆額度)
-  // 每天只額外處理 10 間爬蟲抓到的新店名
-  const uniqueNames = [...new Map(scrapedNames.map(item => [item.name, item])).values()];
-  let additionalCount = 0;
-  for (const item of uniqueNames) {
-    if (additionalCount >= 10) break; // 嚴格限制，保留配額給主搜尋
-    
-    // 檢查是否已在本次收集或資料庫中
-    const isExist = existing.some(p => isSimilar(p.name, item.name)) || 
-                    collected.some(p => isSimilar(p.name, item.name));
-    
-    if (!isExist) {
-      try {
-        const places = await searchPlaces({ type: '餐廳', location: `${item.name} ${item.city}` });
-        if (places.length > 0) {
-          const match = places.find(p => isSimilar(p.name, item.name));
-          if (match) {
-            collected.push({ ...match, source: '爬蟲補充' });
-            additionalCount++;
-          }
-        }
-      } catch {
-        break; // 可能是配額滿了
-      }
+    try {
+      const rssNames = await scrapeRssNames(city);
+      rssNames.forEach(name => rawScrapedItems.push({ name, city, source: 'RSS' }));
+      
+      const iFoodNames = await scrapeIFoodNames(city);
+      iFoodNames.forEach(name => rawScrapedItems.push({ name, city, source: 'iFood' }));
+    } catch (e) {
+      console.warn(`[Scraper] ${city} 爬取失敗:`, (e as Error).message);
     }
   }
 
-  // Dedup and write
+  // 3. 直接寫入爬蟲暫存分頁 (去重並寫入)
+  const uniqueScraped = [...new Map(rawScrapedItems.map(item => [item.name, item])).values()];
+  if (uniqueScraped.length > 0) {
+    await appendScrapedNames(uniqueScraped);
+    console.log(`[Scraper] 已將 ${uniqueScraped.length} 筆暫存店名寫入 scraped_queue`);
+  }
+
+  // 4. 處理主要搜尋結果 (去重並寫入主分頁)
   const newPlaces = filterNewPlaces(collected, existing);
   if (newPlaces.length > 0) {
+    await appendPlaces(newPlaces);
+    await triggerSync();
+  }
     await appendPlaces(newPlaces);
     await triggerSync();
   }

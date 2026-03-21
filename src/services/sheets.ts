@@ -7,43 +7,57 @@ const HEADERS = [
   'address', 'lat', 'lng', 'source', 'url', 'added_at', 'synced',
 ];
 
-function getAuth() {
-  const credentials = JSON.parse(config.google.serviceAccountJson);
-  return new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-}
+const QUEUE_HEADERS = ['name', 'city', 'source', 'added_at'];
+const QUEUE_TAB_NAME = 'scraped_queue';
 
-async function getSheets() {
-  const auth = getAuth();
-  return google.sheets({ version: 'v4', auth });
-}
+// ... (getAuth and getSheets remain same)
 
 export async function bootstrapSheet(): Promise<void> {
   const sheets = await getSheets();
   const meta = await sheets.spreadsheets.get({
     spreadsheetId: config.google.sheetsId,
   });
-  const tabExists = meta.data.sheets?.some(
-    s => s.properties?.title === config.google.sheetTabName
-  );
+  
+  // 檢查主分頁
+  const tabExists = meta.data.sheets?.some(s => s.properties?.title === config.google.sheetTabName);
   if (!tabExists) {
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: config.google.sheetsId,
-      requestBody: {
-        requests: [{
-          addSheet: { properties: { title: config.google.sheetTabName } },
-        }],
-      },
-    });
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: config.google.sheetsId,
-      range: `${config.google.sheetTabName}!A1`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [HEADERS] },
-    });
+    await createTab(sheets, config.google.sheetTabName, HEADERS);
   }
+
+  // 檢查爬蟲暫存分頁
+  const queueExists = meta.data.sheets?.some(s => s.properties?.title === QUEUE_TAB_NAME);
+  if (!queueExists) {
+    await createTab(sheets, QUEUE_TAB_NAME, QUEUE_HEADERS);
+  }
+}
+
+async function createTab(sheets: any, title: string, headers: string[]) {
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: config.google.sheetsId,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title } } }],
+    },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: config.google.sheetsId,
+    range: `${title}!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [headers] },
+  });
+}
+
+export async function appendScrapedNames(items: Array<{ name: string, city: string, source: string }>): Promise<void> {
+  if (items.length === 0) return;
+  const sheets = await getSheets();
+  const rows = items.map(item => [
+    item.name, item.city, item.source, new Date().toISOString()
+  ]);
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: config.google.sheetsId,
+    range: `${QUEUE_TAB_NAME}!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: rows },
+  });
 }
 
 export async function getAllPlaces(): Promise<Place[]> {
