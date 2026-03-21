@@ -17,6 +17,7 @@ export const config = {
     sheetsId: required('GOOGLE_SHEETS_ID'),
     sheetTabName: process.env['GOOGLE_SHEET_TAB_NAME'] ?? 'places',
     serviceAccountJson: required('GOOGLE_SERVICE_ACCOUNT_JSON'),
+    driveFolderId: required('GOOGLE_DRIVE_FOLDER_ID'),
   },
   appsScript: {
     webhookUrl: required('APPS_SCRIPT_WEBHOOK_URL'),
