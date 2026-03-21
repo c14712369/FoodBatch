@@ -6,8 +6,8 @@ import { isSimilar } from '../utils/similarity.js';
 
 const RSS_FEEDS = [
   { url: 'https://www.ptt.cc/atom/Food.xml', name: 'PTT美食板', headers: { Cookie: 'over18=1' } },
-  { url: 'https://travel.ettoday.net/rss/travel-9.xml', name: 'ETtoday美食新聞', headers: {} },
-  { url: 'https://www.walkerland.com.tw/rss/poi/', name: 'WalkerLand窩客島', headers: {} },
+  { url: 'https://udn.com/rssfeed/news/2/6644?ch=udn', name: '聯合新聞網美食', headers: {} },
+  { url: 'https://city.gvm.com.tw/rss/category/13', name: '遠見城市美食', headers: {} },
 ];
 
 const parser = new Parser();
