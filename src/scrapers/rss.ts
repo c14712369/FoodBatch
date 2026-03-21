@@ -25,14 +25,24 @@ function extractPlaceNames(title: string): string[] {
     }
   }
 
-  // 2. 如果是 PTT [食記] 格式，嘗試抓取 [食記] 之後但第一個空格之前的文字
-  const pttMatch = title.match(/\[食記\]\s*([^-\s（]+)/);
-  if (pttMatch && pttMatch[1]) {
-    const name = pttMatch[1].trim();
-    // 過濾掉純地名 (如 台北、大安區)
-    const dists = ['台北', '新北', '台中', '高雄', '台南', '花蓮', '宜蘭', '桃園', '中正', '大安', '中山', '松山', '萬華', '信義', '內湖', '南港', '士林', '北投', '板橋', '三重', '中和', '永和', '新莊', '新店', '土城', '蘆洲', '汐止', '樹林'];
-    if (!dists.some(d => name === d || name === d + '區' || name === d + '市')) {
-      if (name.length >= 2 && name.length <= 15) names.push(name);
+  // 2. 針對 PTT [食記] 的特殊處理
+  if (title.includes('[食記]')) {
+    // 移除 [食記] 前綴以及常見的地名標籤
+    let cleanTitle = title.replace(/\[食記\]/g, '').trim();
+    cleanTitle = cleanTitle.replace(/^(台北|新北|花蓮|台中|高雄|台南|宜蘭|桃園|新竹)/g, '').trim();
+    
+    // 再次嘗試抓取剩餘文字中的前幾個字作為店名
+    const parts = cleanTitle.split(/[\s\-\（\(\~\:\：\/]/);
+    if (parts.length > 0) {
+      let potentialName = parts[0].trim();
+      
+      // 過濾掉純地名與無意義字眼
+      const noise = ['士林', '信義', '內湖', '大安', '中山', '松山', '萬華', '南港', '北投', '板橋', '三重', '中和', '永和', '新莊', '新店', '土城', '蘆洲', '汐止', '樹林', '區', '市', '縣', '食記', '食記串'];
+      const isNoise = noise.some(n => potentialName === n || potentialName === n + '區' || potentialName === n + '市');
+      
+      if (!isNoise && potentialName.length >= 2 && potentialName.length <= 15) {
+        names.push(potentialName);
+      }
     }
   }
 
