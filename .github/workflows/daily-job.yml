@@ -47,6 +47,7 @@ jobs:
           GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
           GOOGLE_SHEET_TAB_NAME: "places"
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
           APPS_SCRIPT_WEBHOOK_URL: ${{ secrets.APPS_SCRIPT_WEBHOOK_URL }}
           APPS_SCRIPT_SECRET: ${{ secrets.APPS_SCRIPT_SECRET }}
           MY_MAPS_FILE_ID: ${{ secrets.MY_MAPS_FILE_ID }}
