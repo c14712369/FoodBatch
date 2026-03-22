@@ -117,17 +117,21 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
   try {
     const channel = await client.channels.fetch(config.discord.summaryChannelId);
     if (channel?.isTextBased()) {
-      const errorLine = summary.errors.length > 0 ? `\n⚠️ 注意：發生了 ${summary.errors.length} 個錯誤` : '';
+      const errorDetails = summary.errors.length > 0 
+        ? `\n\n❌ **執行異常：**\n${summary.errors.map(e => `> - ${e}`).join('\n')}` 
+        : '';
       const driveLink = driveFileId ? `\n📂 **最新地圖檔案 (Drive):** [點此查看](https://drive.google.com/file/d/${driveFileId}/view)` : '';
+      
+      const statusIcon = summary.total > 0 ? '🚀' : (summary.errors.length > 0 ? '⚠️' : 'ℹ️');
       const msg =
-        `**🚀 FoodBatch 每日採集報告**\n\n` +
+        `**${statusIcon} FoodBatch 每日採集報告**\n\n` +
         `**📍 正式地圖更新 (Google API):**\n` +
         `餐廳 ${summary.byType['餐廳']} | 咖啡廳 ${summary.byType['咖啡廳']} | 甜點 ${summary.byType['甜點']} | 藝術 ${summary.byType['藝術']}\n` +
         `購物 ${summary.byType['購物']} | 景點 ${summary.byType['景點']} | 夜市 ${summary.byType['夜市']}\n` +
         `*共計新增 ${summary.total} 筆高品質地點*\n\n` +
         `**📝 網路食記發現 (待處理):**\n` +
         `今日共抓取到 **${reallyNewScraped.length}** 筆新店名，已自動存入 \`scraped_queue\` 活頁簿中` +
-        driveLink + errorLine;
+        driveLink + errorDetails;
       await (channel as any).send(msg);
     }
   } catch (err) {
