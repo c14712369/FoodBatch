@@ -1,44 +1,48 @@
 import { google } from 'googleapis';
 import { config } from '../config.js';
-import { Readable } from 'stream';
+import { PassThrough } from 'stream';
 
 function getAuth() {
   const credentials = JSON.parse(config.google.serviceAccountJson);
   return new google.auth.GoogleAuth({
     credentials,
-    scopes: ['https://www.googleapis.com/auth/drive.file'],
+    scopes: ['https://www.googleapis.com/auth/drive'], // 使用廣泛權限
   });
 }
 
 export async function uploadKmlToDrive(kmlContent: string, fileName: string = 'FoodBatch_Places.kml'): Promise<string> {
   const auth = getAuth();
   const drive = google.drive({ version: 'v3', auth });
+  const folderId = config.google.driveFolderId;
 
-  console.log(`[Drive] 準備上傳 \${fileName} ...`);
+  console.log(`[Drive] 準備同步 ${fileName} 到資料夾 ${folderId}...`);
 
-  // 1. 搜尋是否已有同名檔案 (為了覆蓋更新)
+  // 1. 搜尋現有檔案
   const listRes = await drive.files.list({
-    q: `name = '\${fileName}' and trashed = false`,
+    q: `name = '${fileName}' and '${folderId}' in parents and trashed = false`,
     fields: 'files(id)',
   });
 
   const existingFile = listRes.data.files?.[0];
+  
+  // 建立資料流
+  const bufferStream = new PassThrough();
+  bufferStream.end(Buffer.from(kmlContent, 'utf-8'));
+
   const media = {
     mimeType: 'application/vnd.google-earth.kml+xml',
-    body: Readable.from([kmlContent]),
+    body: bufferStream,
   };
 
   if (existingFile?.id) {
-    // 2. 覆蓋現有檔案
-    console.log(`[Drive] 找到現有檔案 (ID: \${existingFile.id})，執行更新...`);
+    console.log(`[Drive] 執行覆蓋更新 (ID: ${existingFile.id})`);
     await drive.files.update({
       fileId: existingFile.id,
       media: media,
     });
     return existingFile.id;
   } else {
-    // 3. 建立新檔案
-    console.log(`[Drive] 建立全新檔案...`);
+    console.log(`[Drive] 執行全新建立`);
     const createRes = await drive.files.create({
       requestBody: {
         name: fileName,

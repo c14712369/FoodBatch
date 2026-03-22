@@ -18,14 +18,14 @@ const CITIES = [
   '東京', '大阪', '京都', '福岡', '沖繩', '札幌', '名古屋', '奈良', '神戶'
 ];
 const TYPES: PlaceType[] = ['餐廳', '咖啡廳', '甜點', '藝術', '購物', '景點', '夜市'];
-const CUISINE_EXTENSIONS = ['火鍋', '日式', '燒烤', '漢堡', '義大利麵'];
+const CUISINE_EXTENSIONS = ['火鍋', '燒肉', '居酒屋', '咖啡廳', '私廚', '早午餐'];
 const CORE_CITIES = ['台北', '新北', '香港', '東京', '大阪'];
 
 export async function runDailyJob(client: Client): Promise<RunSummary> {
   const summary: RunSummary = {
     total: 0,
-    byType: { 
-      '餐廳': 0, '咖啡廳': 0, '甜點': 0, '藝術': 0, '購物': 0, '景點': 0, '夜市': 0 
+    byType: {
+      '餐廳': 0, '咖啡廳': 0, '甜點': 0, '藝術': 0, '購物': 0, '景點': 0, '夜市': 0
     },
     errors: [],
   };
@@ -33,7 +33,7 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
   const existing = await getAllPlaces();
   const collected: Place[] = [];
 
-  // 1. Google Places API (主要來源)
+  // 1. Google Places API (主動搜尋)
   outer: for (const city of CITIES) {
     for (const type of TYPES) {
       try {
@@ -41,7 +41,7 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
         collected.push(...places);
       } catch (err) {
         if ((err as any).response?.status === 429) {
-          summary.errors.push('API 配額已達上限，停止主要搜尋');
+          summary.errors.push('API 配額已達上限，中斷本次搜尋');
           break outer;
         }
       }
@@ -59,8 +59,8 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
     }
   }
 
-  // 2. 補充爬蟲來源
-  const TW_CITIES = ['台北', '新北', '桃園', '台中', '台南', '高雄', '新竹', '嘉義', '彰化', '屏東', '宜蘭', '花蓮', '台東', '基隆', '南投'];
+  // 2. 爬取網路食記名稱
+  const TW_CITIES = ['台北', '新北', '桃園', '台中', '台南', '高雄', '基隆', '新竹', '宜蘭', '花蓮', '屏東', '彰化', '南投', '雲林', '嘉義'];
   const rawScrapedItems: Array<{ name: string, city: string, source: string }> = [];
 
   for (const city of TW_CITIES) {
@@ -76,7 +76,7 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
     }
   }
 
-  // 3. 直接寫入爬蟲暫存分頁 (去重後寫入)
+  // 3. 過濾並存入待處理清單 (防重複後存入)
   const existingScraped = await getExistingScrapedNames();
   const uniqueScraped = [...new Map(rawScrapedItems.map(item => [item.name, item])).values()];
   const reallyNewScraped = uniqueScraped.filter(item => {
@@ -89,7 +89,7 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
     await appendScrapedNames(reallyNewScraped);
   }
 
-  // 4. 處理主要搜尋結果
+  // 4. 過濾並存入正式地圖
   const newPlaces = filterNewPlaces(collected, existing);
   if (newPlaces.length > 0) {
     await appendPlaces(newPlaces);
@@ -97,11 +97,11 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
   }
 
   for (const p of newPlaces) {
-    summary.byType[p.type]++;
+    summary.byType[p.type as PlaceType]++;
     summary.total++;
   }
 
-  // 5. 自動產生 KML 並更新 Google Drive (透過 Apps Script 中轉)
+  // 5. 更新 KML 存儲於 Google Drive (透過 Apps Script 處理)
   let driveFileId = '';
   try {
     const updatedPlaces = await getAllPlaces();
@@ -109,24 +109,24 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
     driveFileId = await updateKMLOnDrive(kmlContent, 'FoodBatch_Places.kml');
     console.log(`[Drive] KML 已透過 Apps Script 更新: ${driveFileId}`);
   } catch (err) {
-    console.error('[Drive] KML 自動更新失敗:', (err as Error).message);
-    summary.errors.push('KML 雲端更新失敗');
+    console.error('[Drive] KML 更新失敗:', (err as Error).message);
+    summary.errors.push('KML 檔案更新失敗');
   }
 
   // Post summary to Discord
   try {
     const channel = await client.channels.fetch(config.discord.summaryChannelId);
     if (channel?.isTextBased()) {
-      const errorLine = summary.errors.length > 0 ? `\n⚠️ 偵測到 ${summary.errors.length} 個錯誤` : '';
-      const driveLink = driveFileId ? `\n📂 **最新地圖檔案 (Drive):** [點我下載](https://drive.google.com/file/d/${driveFileId}/view)` : '';
-      const msg = 
+      const errorLine = summary.errors.length > 0 ? `\n⚠️ 注意：發生了 ${summary.errors.length} 個錯誤` : '';
+      const driveLink = driveFileId ? `\n📂 **最新地圖檔案 (Drive):** [點此查看](https://drive.google.com/file/d/${driveFileId}/view)` : '';
+      const msg =
         `**🚀 FoodBatch 每日採集報告**\n\n` +
         `**📍 正式地圖更新 (Google API):**\n` +
         `餐廳 ${summary.byType['餐廳']} | 咖啡廳 ${summary.byType['咖啡廳']} | 甜點 ${summary.byType['甜點']} | 藝術 ${summary.byType['藝術']}\n` +
         `購物 ${summary.byType['購物']} | 景點 ${summary.byType['景點']} | 夜市 ${summary.byType['夜市']}\n` +
         `*共計新增 ${summary.total} 筆高品質地點*\n\n` +
-        `**🔍 網路熱議採集 (爬蟲暫存):**\n` +
-        `今日共挖掘到 **${reallyNewScraped.length}** 筆全新潛在名單，已存入 \`scraped_queue\`。\n` +
+        `**📝 網路食記發現 (待處理):**\n` +
+        `今日共抓取到 **${reallyNewScraped.length}** 筆新店名，已自動存入 \`scraped_queue\` 活頁簿中` +
         driveLink + errorLine;
       await (channel as any).send(msg);
     }
@@ -139,7 +139,7 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
 
 export function startScheduler(client: Client): void {
   cron.schedule('0 9 * * *', () => {
-    runDailyJob(client).catch(err => console.error('[Scheduler] 任務失敗:', err));
+    runDailyJob(client).catch(err => console.error('[Scheduler] 執行失敗:', err));
   }, { timezone: 'Asia/Taipei' });
-  console.log('[Scheduler] 排程已啟動（每日 09:00 台北時間）');
+  console.log('[Scheduler] 排程器已啟動，每日 09:00 執行採集任務');
 }
