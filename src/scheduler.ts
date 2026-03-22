@@ -15,7 +15,7 @@ import type { Place, PlaceType, RunSummary } from './types.js';
 
 const CITIES = [
   '台北', '新北', '花蓮', '香港',
-  '東京', '大阪', '京都', '福岡', '沖繩', '札幌', '名古屋', '奈良', '神戶'
+  '東京', '大阪', '京都', '福岡', '沖繩', '札幌', '名古屋', '奈良', '神戶', '鎌倉'
 ];
 const TYPES: PlaceType[] = ['餐廳', '咖啡廳', '甜點', '藝術', '購物', '景點', '夜市'];
 const CUISINE_EXTENSIONS = ['火鍋', '燒肉', '居酒屋', '咖啡廳', '私廚', '早午餐'];
