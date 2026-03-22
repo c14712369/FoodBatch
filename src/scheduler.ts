@@ -123,8 +123,10 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
       const driveLink = driveFileId ? `\n📂 **最新地圖檔案 (Drive):** [點此查看](https://drive.google.com/file/d/${driveFileId}/view)` : '';
       
       const statusIcon = summary.total > 0 ? '🚀' : (summary.errors.length > 0 ? '⚠️' : 'ℹ️');
+      const timestamp = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
       const msg =
-        `**${statusIcon} FoodBatch 每日採集報告**\n\n` +
+        `**▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬**\n` +
+        `**${statusIcon} FoodBatch 每日採集報告** (${timestamp})\n\n` +
         `**📍 正式地圖更新 (Google API):**\n` +
         `餐廳 ${summary.byType['餐廳']} | 咖啡廳 ${summary.byType['咖啡廳']} | 甜點 ${summary.byType['甜點']} | 藝術 ${summary.byType['藝術']}\n` +
         `購物 ${summary.byType['購物']} | 景點 ${summary.byType['景點']} | 夜市 ${summary.byType['夜市']}\n` +
