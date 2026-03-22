@@ -6,12 +6,13 @@ import type { Place, PlaceType, SearchOptions } from '../types.js';
 const PLACES_API_URL = 'https://places.googleapis.com/v1/places:searchText';
 
 const TYPE_QUERY: Record<PlaceType, string> = {
-  '餐廳': '熱門餐廳',
-  '咖啡廳': '熱門咖啡廳',
-  '甜點': '熱門甜點 甜點店 蛋糕 伴手禮',
-  '藝術': '熱門美術館 博物館 藝術中心 展覽',
-  '購物': '熱門購物 商場 百貨',
-  '景點': '熱門景點',
+  '餐廳': '在地 餐廳',
+  '咖啡廳': '在地 咖啡廳',
+  '甜點': '在地 甜點店 蛋糕店 冰店 造型甜點',
+  '藝術': '在地 藝廊 博物館 藝術中心 展覽',
+  '購物': '在地 選物店 設計師品牌 購物中心 買手店',
+  '藝術': '在地 藝術',
+  '景點': '在地 景點',
   '夜市': '夜市',
 };
 
@@ -23,20 +24,20 @@ export async function sleep(ms: number) {
 }
 
 function getRatingThreshold(type: PlaceType): number {
-  // 對於美食類別要求較高 (4.2)，景點與生活類別維持 4.0
+  // 針對餐飲類別要求較嚴格 (4.2)，景點或藝文活動則放寬至 4.0
   const higherThresholdTypes: PlaceType[] = ['餐廳', '咖啡廳', '甜點'];
   return higherThresholdTypes.includes(type) ? 4.2 : 4.0;
 }
 
 function isSuspiciousCheckInStore(p: RawPlace): boolean {
-  // 1. 調整高分審查門檻：4.9 以上才視為「疑似灌水」，但只要評論數破 500 就視為可信名店
+  // 1. 評價極高且評論數偏低（4.9 以上且不到 500 則），通常是剛開幕刷出來的
   const isHighRatingSuspicious = p.rating >= 4.9 && p.userRatingCount < 500;
 
-  // 2. 內容分析
+  // 2. 關鍵字過濾
   const reviews = p.reviews || [];
   if (reviews.length > 0) {
-    // 改用更精確的「激勵性關鍵字」，避免單純提到「打卡」就被誤殺
-    const SHILL_KEYWORDS = ['打卡送', '評論送', '五星送', '5星送', '評價送', '評論換', '打卡換', '送小菜', '送飲料'];
+    // 如果評論中出現 2 次以上「打卡、評論、五星、招待、評論送、五顆星」等，視為業配店
+    const SHILL_KEYWORDS = ['打卡送', '評論送', '招待', '5顆星', '五星送', '五顆星', '打卡禮', '招待券', '評價送'];
     let totalLength = 0;
     let shillKeywordCount = 0;
     let reviewsWithText = 0;
@@ -52,14 +53,11 @@ function isSuspiciousCheckInStore(p: RawPlace): boolean {
       }
     }
 
-    // 優化判定邏輯：
-    // - 至少要有 2 則評論明確提到「送/換」相關字眼，才判定為打卡店
     if (shillKeywordCount >= 2) return true;
 
-    // - 針對極高分 (4.9+) 且評論數不夠多 (<500) 的店，才檢查評論字數
     if (reviewsWithText > 0 && isHighRatingSuspicious) {
       const avgLength = totalLength / reviewsWithText;
-      if (avgLength < 10) return true; // 只要平均有 10 個字就算過關
+      if (avgLength < 10) return true; // 平均評論長度不到 10 個字，視為灌水
     }
   }
 
@@ -89,30 +87,16 @@ export async function searchPlaces(opts: SearchOptions): Promise<Place[]> {
 
   return raw
     .filter(p => {
-      // 基礎過濾 (適用於所有類別)
       const dynamicRatingThreshold = getRatingThreshold(opts.type);
-      
-      if (p.rating < dynamicRatingThreshold) {
-        // console.log(`[Filter] 低評分跳過: ${p.displayName.text} (${p.rating}星 < ${dynamicRatingThreshold})`);
-        return false;
-      }
-      if (p.userRatingCount < REVIEW_THRESHOLD) {
-        // console.log(`[Filter] 評論數不足跳過: ${p.displayName.text} (${p.userRatingCount}評)`);
-        return false;
-      }
-      
-      // 進階防打卡店過濾 (僅針對「餐廳」類別生效)
+
+      if (p.rating < dynamicRatingThreshold) return false;
+      if (p.userRatingCount < REVIEW_THRESHOLD) return false;
+
+      // 針對「餐廳」進行進階的業配過濾
       if (opts.type === '餐廳') {
-        const isSuspicious = isSuspiciousCheckInStore(p);
-        if (isSuspicious) {
-          // 內部偵錯 Log
-          const reviews = p.reviews || [];
-          const text = reviews.map(r => r.text?.text || '').join(' | ');
-          console.log(`[Filter] 排除疑似打卡店 (餐廳): ${p.displayName.text} - 原因: 關鍵字或評論長度異常`);
-          return false;
-        }
+        if (isSuspiciousCheckInStore(p)) return false;
       }
-      
+
       return true;
     })
     .map(p => ({
