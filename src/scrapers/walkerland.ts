@@ -4,7 +4,7 @@ import axios from 'axios';
 export async function scrapeWalkerLandNames(city: string): Promise<string[]> {
   try {
     // 窩客島搜尋該城市的食記頁面
-    const url = `https://www.walkerland.com.tw/search/food/list/?kw=${encodeURIComponent(city)}`;
+    const url = `https://www.walkerland.com.tw/poi/list?kw=${encodeURIComponent(city)}`;
     const res = await axios.get(url, {
       headers: { 
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' 
