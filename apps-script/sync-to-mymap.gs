@@ -1,27 +1,46 @@
-// Google Apps Script: 負責處理 FoodBatch 試算表同步與 KML 雲端上傳
-const SECRET = "YOUR_APPS_SCRIPT_SECRET"; // 👈 請確保此處與 .env 一致
+// Google Apps Script: 為 FoodMap PWA 提供 JSON 數據與 KML 同步服務
+const SECRET = "YOUR_APPS_SCRIPT_SECRET"; // 請確保與 FoodBatch .env 中的一致
+
+function doGet(e) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("places");
+    if (!sheet) throw new Error("Sheet 'places' not found");
+
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const rows = data.slice(1);
+
+    const jsonData = rows.map(row => {
+      const obj = {};
+      headers.forEach((header, index) => {
+        obj[header] = row[index];
+      });
+      return obj;
+    });
+
+    return ContentService.createTextOutput(JSON.stringify(jsonData))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
 
 function doPost(e) {
   try {
     let data;
-    // 強化 JSON 解析，適應不同類型的請求
     if (e.postData.type === "application/json") {
       data = JSON.parse(e.postData.contents);
     } else {
-      // 容錯處理
       data = JSON.parse(e.postData.contents);
     }
-    
-    // 優先從 token 欄位讀取，若無則嘗試從 secret 欄位 (舊版)
-    const receivedToken = data.token || data.secret;
 
-    // 驗證安全性 Token
+    const receivedToken = data.token || data.secret;
     if (receivedToken !== SECRET) {
       console.error("Unauthorized! Received: " + receivedToken);
       return ContentService.createTextOutput("Error: Unauthorized").setMimeType(ContentService.MimeType.TEXT);
     }
 
-    // 路由分發
     if (data.action === "updateKML") {
       return handleKMLUpdate(data.fileName, data.content);
     } else if (data.action === "sync") {

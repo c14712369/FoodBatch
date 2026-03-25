@@ -15,50 +15,60 @@ const TYPE_QUERY: Record<PlaceType, string> = {
   '夜市': '夜市',
 };
 
-const REVIEW_THRESHOLD = 200;
+const REVIEW_MIN_THRESHOLD = 50;
 const REQUEST_DELAY_MS = 300;
 
 export async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function getRatingThreshold(type: PlaceType): number {
-  // 針對餐飲類別要求較嚴格 (4.2)，景點或藝文活動則放寬至 4.0
-  const higherThresholdTypes: PlaceType[] = ['餐廳', '咖啡廳', '甜點'];
-  return higherThresholdTypes.includes(type) ? 4.2 : 4.0;
+function checkRatingAndReview(p: RawPlace): boolean {
+  // 所有類別統一門檻：最低 50 則評論
+  if (p.userRatingCount < REVIEW_MIN_THRESHOLD) return false;
+
+  // 統一雙層門檻：50-200 則需 4.3+，超過 200 則需 4.2+
+  if (p.userRatingCount <= 200) {
+    return p.rating >= 4.3;
+  } else {
+    return p.rating >= 4.2;
+  }
 }
 
-function isSuspiciousCheckInStore(p: RawPlace): boolean {
-  // 1. 評價極高且評論數偏低（4.9 以上且不到 500 則），通常是剛開幕刷出來的
-  const isHighRatingSuspicious = p.rating >= 4.9 && p.userRatingCount < 500;
+function isSuspiciousCheckInStore(p: RawPlace, type: PlaceType): boolean {
+  // 僅針對餐飲類別（餐廳、咖啡廳、甜點）進行品質控管
+  const foodTypes: PlaceType[] = ['餐廳', '咖啡廳', '甜點'];
+  if (!foodTypes.includes(type)) return false;
 
-  // 2. 關鍵字過濾
   const reviews = p.reviews || [];
-  if (reviews.length > 0) {
-    // 如果評論中出現 2 次以上「打卡、評論、五星、招待、評論送、五顆星」等，視為業配店
-    const SHILL_KEYWORDS = ['打卡送', '評論送', '招待', '5顆星', '五星送', '五顆星', '打卡禮', '招待券', '評價送'];
-    let totalLength = 0;
-    let shillKeywordCount = 0;
-    let reviewsWithText = 0;
+  if (reviews.length === 0) return false;
 
-    for (const r of reviews) {
-      const text = r.text?.text || '';
-      if (text.length > 0) {
-        reviewsWithText++;
-        totalLength += text.length;
-        if (SHILL_KEYWORDS.some(k => text.includes(k))) {
-          shillKeywordCount++;
-        }
-      }
-    }
+  // 1. 評論品質檢查 (基於 Google API 回傳之最新 5 則評論)
+  const longReviews = reviews.filter(r => (r.text?.text?.length || 0) > 10);
+  const minLongRequired = Math.min(2, reviews.length);
+  if (longReviews.length < minLongRequired) return true;
 
-    if (shillKeywordCount >= 2) return true;
-
-    if (reviewsWithText > 0 && isHighRatingSuspicious) {
-      const avgLength = totalLength / reviewsWithText;
-      if (avgLength < 10) return true; // 平均評論長度不到 10 個字，視為灌水
-    }
+  // 2. 負面/雷店關鍵字過濾 (只要出現 1 個就視為地雷)
+  const BAD_KEYWORDS = [
+    '難吃', '蟑螂', '不衛生', '環境髒', '態度差', '非常失望', '大雷', '踩雷', 
+    '不會再去', '死鹹', '毛髮', '頭髮', '拉肚子', '變質', '酸掉', '反推', 
+    '沒熟', '沒洗乾淨', '不新鮮', '縮水'
+  ];
+  
+  // 3. 業配/招待關鍵字過濾 (出現 2 個以上才排除，避免誤殺)
+  const SHILL_KEYWORDS = ['打卡送', '評論送', '招待', '5顆星', '五星送', '五顆星', '打卡禮', '招待券', '評價送'];
+  
+  let shillKeywordCount = 0;
+  for (const r of reviews) {
+    const text = r.text?.text || '';
+    
+    // 檢查明確雷點：只要 5 則評論中有任一則提到這些關鍵字，直接排除
+    if (BAD_KEYWORDS.some(k => text.includes(k))) return true;
+    
+    // 統計業配字眼
+    if (SHILL_KEYWORDS.some(k => text.includes(k))) shillKeywordCount++;
   }
+
+  if (shillKeywordCount >= 2) return true;
 
   return false;
 }
@@ -86,15 +96,11 @@ export async function searchPlaces(opts: SearchOptions): Promise<Place[]> {
 
   return raw
     .filter(p => {
-      const dynamicRatingThreshold = getRatingThreshold(opts.type);
+      // 1. 評分與評論數過濾 (套用到所有類別)
+      if (!checkRatingAndReview(p)) return false;
 
-      if (p.rating < dynamicRatingThreshold) return false;
-      if (p.userRatingCount < REVIEW_THRESHOLD) return false;
-
-      // 針對「餐廳」進行進階的業配過濾
-      if (opts.type === '餐廳') {
-        if (isSuspiciousCheckInStore(p)) return false;
-      }
+      // 2. 品質控管與業配過濾 (僅套用到餐飲類別)
+      if (isSuspiciousCheckInStore(p, opts.type)) return false;
 
       return true;
     })
