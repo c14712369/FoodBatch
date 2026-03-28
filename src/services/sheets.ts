@@ -3,8 +3,8 @@ import { config } from '../config.js';
 import type { Place } from '../types.js';
 
 const HEADERS = [
-  'place_id', 'name', 'type', 'cuisine', 'rating', 'reviews',
-  'address', 'lat', 'lng', 'source', 'url', 'added_at', 'synced',
+  'country', 'region', 'name', 'type', 'cuisine', 'url',
+  'address', 'rating', 'reviews', 'place_id', 'lat', 'lng', 'added_at', 'synced',
 ];
 
 const QUEUE_HEADERS = ['name', 'city', 'source', 'added_at'];
@@ -28,17 +28,46 @@ export async function bootstrapSheet(): Promise<void> {
   const meta = await sheets.spreadsheets.get({
     spreadsheetId: config.google.sheetsId,
   });
-  
+
   // 檢查主分頁
   const tabExists = meta.data.sheets?.some(s => s.properties?.title === config.google.sheetTabName);
   if (!tabExists) {
     await createTab(sheets, config.google.sheetTabName, HEADERS);
+  } else {
+    // 分頁存在，但確認 A1 是否為正確的標題列（防止清空後標題消失）
+    const headerRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: config.google.sheetsId,
+      range: `${config.google.sheetTabName}!A1:A1`,
+    });
+    const a1 = headerRes.data.values?.[0]?.[0];
+    if (a1 !== 'country') {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: config.google.sheetsId,
+        range: `${config.google.sheetTabName}!A1`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [HEADERS] },
+      });
+    }
   }
 
   // 檢查爬蟲暫存分頁
   const queueExists = meta.data.sheets?.some(s => s.properties?.title === QUEUE_TAB_NAME);
   if (!queueExists) {
     await createTab(sheets, QUEUE_TAB_NAME, QUEUE_HEADERS);
+  } else {
+    const headerRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: config.google.sheetsId,
+      range: `${QUEUE_TAB_NAME}!A1:A1`,
+    });
+    const a1 = headerRes.data.values?.[0]?.[0];
+    if (a1 !== 'name') {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: config.google.sheetsId,
+        range: `${QUEUE_TAB_NAME}!A1`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [QUEUE_HEADERS] },
+      });
+    }
   }
 }
 
@@ -89,23 +118,24 @@ export async function getAllPlaces(): Promise<Place[]> {
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: config.google.sheetsId,
-    range: `${config.google.sheetTabName}!A2:M`,
+    range: `${config.google.sheetTabName}!A2:N`,
   });
   const rows = res.data.values ?? [];
   return rows.map(r => ({
-    place_id: r[0] ?? '',
-    name: r[1] ?? '',
-    type: r[2] as Place['type'],
-    cuisine: r[3] ?? '',
-    rating: Number(r[4] ?? 0),
-    reviews: Number(r[5] ?? 0),
+    country: r[0] ?? '',
+    region: r[1] ?? '',
+    name: r[2] ?? '',
+    type: r[3] as Place['type'],
+    cuisine: r[4] ?? '',
+    url: r[5] ?? '',
     address: r[6] ?? '',
-    lat: Number(r[7] ?? 0),
-    lng: Number(r[8] ?? 0),
-    source: r[9] ?? '',
-    url: r[10] ?? '',
-    added_at: r[11] ?? '',
-    synced: r[12] === 'TRUE',
+    rating: Number(r[7] ?? 0),
+    reviews: Number(r[8] ?? 0),
+    place_id: r[9] ?? '',
+    lat: Number(r[10] ?? 0),
+    lng: Number(r[11] ?? 0),
+    added_at: r[12] ?? '',
+    synced: r[13] === 'TRUE',
   }));
 }
 
@@ -113,9 +143,9 @@ export async function appendPlaces(places: Place[]): Promise<void> {
   if (places.length === 0) return;
   const sheets = await getSheets();
   const rows = places.map(p => [
-    p.place_id, p.name, p.type, p.cuisine,
-    p.rating, p.reviews, p.address, p.lat, p.lng,
-    p.source, p.url, p.added_at, 'FALSE',
+    p.country, p.region, p.name, p.type, p.cuisine,
+    p.url, p.address, p.rating, p.reviews, p.place_id,
+    p.lat, p.lng, p.added_at, 'FALSE',
   ]);
   await sheets.spreadsheets.values.append({
     spreadsheetId: config.google.sheetsId,
@@ -129,7 +159,7 @@ export async function getUnsyncedPlaces(): Promise<Array<Place & { rowIndex: num
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: config.google.sheetsId,
-    range: `${config.google.sheetTabName}!A2:M`,
+    range: `${config.google.sheetTabName}!A2:N`,
   });
   const rows = res.data.values ?? [];
   return rows
@@ -141,7 +171,7 @@ export async function markSynced(rowIndexes: number[]): Promise<void> {
   if (rowIndexes.length === 0) return;
   const sheets = await getSheets();
   const data = rowIndexes.map(i => ({
-    range: `${config.google.sheetTabName}!M${i}`,
+    range: `${config.google.sheetTabName}!N${i}`,
     values: [['TRUE']],
   }));
   await sheets.spreadsheets.values.batchUpdate({
@@ -152,18 +182,19 @@ export async function markSynced(rowIndexes: number[]): Promise<void> {
 
 function rowToPlace(r: string[]): Place {
   return {
-    place_id: r[0] ?? '',
-    name: r[1] ?? '',
-    type: r[2] as Place['type'],
-    cuisine: r[3] ?? '',
-    rating: Number(r[4] ?? 0),
-    reviews: Number(r[5] ?? 0),
+    country: r[0] ?? '',
+    region: r[1] ?? '',
+    name: r[2] ?? '',
+    type: r[3] as Place['type'],
+    cuisine: r[4] ?? '',
+    url: r[5] ?? '',
     address: r[6] ?? '',
-    lat: Number(r[7] ?? 0),
-    lng: Number(r[8] ?? 0),
-    source: r[9] ?? '',
-    url: r[10] ?? '',
-    added_at: r[11] ?? '',
-    synced: r[12] === 'TRUE',
+    rating: Number(r[7] ?? 0),
+    reviews: Number(r[8] ?? 0),
+    place_id: r[9] ?? '',
+    lat: Number(r[10] ?? 0),
+    lng: Number(r[11] ?? 0),
+    added_at: r[12] ?? '',
+    synced: r[13] === 'TRUE',
   };
 }

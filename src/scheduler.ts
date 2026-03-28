@@ -13,13 +13,28 @@ import { isSimilar } from './utils/similarity.js';
 import { config } from './config.js';
 import type { Place, PlaceType, RunSummary } from './types.js';
 
-const CITIES = [
-  '台北', '新北', '花蓮', '香港',
-  '東京', '大阪', '京都', '福岡', '沖繩', '札幌', '名古屋', '奈良', '神戶', '鎌倉'
-];
-const TYPES: PlaceType[] = ['餐廳', '咖啡廳', '甜點', '藝術', '購物', '景點', '夜市'];
-const CUISINE_EXTENSIONS = ['火鍋', '燒肉', '居酒屋', '咖啡廳', '私廚', '早午餐'];
-const CORE_CITIES = ['台北', '新北', '香港', '東京', '大阪'];
+interface CityConfig {
+  types: PlaceType[];
+  country: string;
+  region: string;
+}
+
+const CITY_CONFIG: Record<string, CityConfig> = {
+  '台北': { country: '台灣', region: '台北', types: ['餐廳','咖啡廳','甜點','藝術','購物','景點','夜市'] },
+  '新北': { country: '台灣', region: '新北', types: ['餐廳','咖啡廳','甜點','景點','夜市'] },
+  '花蓮': { country: '台灣', region: '花蓮', types: ['餐廳','咖啡廳','甜點','景點'] },
+  '香港': { country: '香港', region: '香港', types: ['餐廳','咖啡廳','甜點','藝術','購物','景點'] },
+  '東京': { country: '日本', region: '東京', types: ['餐廳','咖啡廳','甜點','藝術','購物','景點'] },
+  '大阪': { country: '日本', region: '大阪', types: ['餐廳','咖啡廳','甜點','購物','景點'] },
+  '京都': { country: '日本', region: '京都', types: ['餐廳','咖啡廳','甜點','藝術','景點'] },
+  '福岡': { country: '日本', region: '福岡', types: ['餐廳','咖啡廳','甜點','景點'] },
+  '沖繩': { country: '日本', region: '沖繩', types: ['餐廳','咖啡廳','甜點','景點'] },
+  '札幌': { country: '日本', region: '札幌', types: ['餐廳','咖啡廳','甜點','景點'] },
+  '名古屋': { country: '日本', region: '名古屋', types: ['餐廳','咖啡廳','甜點','景點'] },
+  '奈良': { country: '日本', region: '奈良', types: ['餐廳','咖啡廳','景點'] },
+  '神戶': { country: '日本', region: '神戶', types: ['餐廳','咖啡廳','甜點','購物','景點'] },
+  '鎌倉': { country: '日本', region: '鎌倉', types: ['餐廳','咖啡廳','甜點','景點'] },
+};
 
 export async function runDailyJob(client: Client): Promise<RunSummary> {
   const summary: RunSummary = {
@@ -34,10 +49,10 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
   const collected: Place[] = [];
 
   // 1. Google Places API (主動搜尋)
-  outer: for (const city of CITIES) {
-    for (const type of TYPES) {
+  outer: for (const [city, cfg] of Object.entries(CITY_CONFIG)) {
+    for (const type of cfg.types) {
       try {
-        const places = await searchPlaces({ type, location: city });
+        const places = await searchPlaces({ type, location: city, country: cfg.country, region: cfg.region });
         collected.push(...places);
       } catch (err) {
         if ((err as any).response?.status === 429) {
@@ -47,16 +62,6 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
       }
     }
 
-    if (CORE_CITIES.includes(city)) {
-      for (const cuisine of CUISINE_EXTENSIONS) {
-        try {
-          const places = await searchPlaces({ type: '餐廳', location: city, cuisine });
-          collected.push(...places);
-        } catch (err) {
-          if ((err as any).response?.status === 429) break outer;
-        }
-      }
-    }
   }
 
   // 2. 爬取網路食記名稱

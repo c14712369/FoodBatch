@@ -23,17 +23,12 @@ export function generateKml(places: Place[]): string {
         `評分：${p.rating} 星 (${p.reviews} 則評論)`,
         `地址：${p.address}`,
         `連結：${p.url}`,
-        `來源：${p.source}`,
         `加入時間：${p.added_at}`,
       ].filter(Boolean).map(line => escapeXml(line)).join('\n');
 
-      // 注意：KML 的座標順序是 [經度, 緯度, 高度]
       return `    <Placemark>
       <name>${escapeXml(p.name)}</name>
       <description>${desc}</description>
-      <Point>
-        <coordinates>${p.lng},${p.lat},0</coordinates>
-      </Point>
     </Placemark>`;
     }).join('\n');
 
