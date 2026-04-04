@@ -7,8 +7,14 @@ import { isSimilar } from '../utils/similarity.js';
 export async function scrapeIFoodNames(city: string): Promise<string[]> {
   const allNames: string[] = [];
   
-  // 一次抓取前 5 頁，大幅增加資料量
-  for (let page = 1; page <= 5; page++) {
+  // 每天推進 5 頁，範圍 1~50 頁循環 (10 天一個週期)
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  const cycleDays = 10;
+  const pagesPerDay = 5;
+  const startPage = ((dayOfYear % cycleDays) * pagesPerDay) + 1;
+  const endPage = startPage + pagesPerDay - 1;
+
+  for (let page = startPage; page <= endPage; page++) {
     try {
       const url = `https://ifoodie.tw/explore/${encodeURIComponent(city)}/list?page=${page}`;
       const res = await axios.get(url, {

@@ -15,6 +15,16 @@ const TYPE_QUERY: Record<PlaceType, string> = {
   '夜市': '夜市',
 };
 
+const EXTRA_KEYWORDS: Record<PlaceType, string[]> = {
+  '餐廳': ['中式', '日式', '韓式', '泰式', '義式', '美式', '火鍋', '燒肉', '小吃', '早午餐'],
+  '咖啡廳': ['手沖', '貓咪', '老宅', '深夜', '文青', '網美', '不限時'],
+  '甜點': ['法式', '傳統', '肉桂捲', '千層', '冰品', '伴手禮'],
+  '藝術': ['聯展', '個展', '當代', '美術館', '文創'],
+  '購物': ['古著', '選物', '手作', '潮流', '市集'],
+  '景點': ['秘境', '夜景', '歷史', '親子', '約會'],
+  '夜市': ['必吃', '老字號', '排隊', '隱藏版']
+};
+
 const REVIEW_MIN_THRESHOLD = 50;
 const REQUEST_DELAY_MS = 300;
 
@@ -66,9 +76,18 @@ function isSuspiciousCheckInStore(p: RawPlace, type: PlaceType): boolean {
 }
 
 export async function searchPlaces(opts: SearchOptions): Promise<Place[]> {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  
+  let keywordSuffix = '';
+  if (EXTRA_KEYWORDS[opts.type] && EXTRA_KEYWORDS[opts.type].length > 0) {
+    const list = EXTRA_KEYWORDS[opts.type];
+    keywordSuffix = ' ' + list[dayOfYear % list.length];
+  }
+
+  const baseQuery = TYPE_QUERY[opts.type];
   const query = opts.cuisine
     ? `${opts.cuisine} ${opts.location}`
-    : `${opts.location} ${TYPE_QUERY[opts.type]}`;
+    : `${opts.location} ${baseQuery}${keywordSuffix}`;
 
   const res = await axios.post(
     PLACES_API_URL,
