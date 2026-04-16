@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import { Client } from 'discord.js';
+import { WebhookClient } from 'discord.js';
 import { searchPlaces } from './services/places.js';
 import { scrapeRssNames } from './scrapers/rss.js';
 import { scrapeIFoodNames } from './scrapers/ifood.js';
@@ -36,7 +36,7 @@ const CITY_CONFIG: Record<string, CityConfig> = {
   '鎌倉': { country: '日本', region: '鎌倉', types: ['餐廳','咖啡廳','甜點','景點'] },
 };
 
-export async function runDailyJob(client: Client): Promise<RunSummary> {
+export async function runDailyJob(): Promise<RunSummary> {
   const summary: RunSummary = {
     total: 0,
     byType: {
@@ -61,7 +61,6 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
         }
       }
     }
-
   }
 
   // 2. 爬取網路食記名稱
@@ -118,10 +117,11 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
     summary.errors.push('KML 檔案更新失敗');
   }
 
-  // Post summary to Discord
+  // Post summary to Discord via Webhook
   try {
-    const channel = await client.channels.fetch(config.discord.summaryChannelId);
-    if (channel?.isTextBased()) {
+    if (config.discord.webhookUrl) {
+      const webhookClient = new WebhookClient({ url: config.discord.webhookUrl });
+      
       const errorDetails = summary.errors.length > 0 
         ? `\n\n❌ **執行異常：**\n${summary.errors.map(e => `> - ${e}`).join('\n')}` 
         : '';
@@ -139,18 +139,19 @@ export async function runDailyJob(client: Client): Promise<RunSummary> {
         `**📝 網路食記發現 (待處理):**\n` +
         `今日共抓取到 **${reallyNewScraped.length}** 筆新店名，已自動存入 \`scraped_queue\` 活頁簿中` +
         driveLink + errorDetails;
-      await (channel as any).send(msg);
+        
+      await webhookClient.send({ content: msg });
     }
   } catch (err) {
-    console.error('[Scheduler] Discord 通知失敗:', (err as Error).message);
+    console.error('[Scheduler] Discord Webhook 通知失敗:', (err as Error).message);
   }
 
   return summary;
 }
 
-export function startScheduler(client: Client): void {
+export function startScheduler(): void {
   cron.schedule('0 9 * * *', () => {
-    runDailyJob(client).catch(err => console.error('[Scheduler] 執行失敗:', err));
+    runDailyJob().catch(err => console.error('[Scheduler] 執行失敗:', err));
   }, { timezone: 'Asia/Taipei' });
   console.log('[Scheduler] 排程器已啟動，每日 09:00 執行採集任務');
 }

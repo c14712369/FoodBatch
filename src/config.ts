@@ -8,9 +8,7 @@ function required(key: string): string {
 
 export const config = {
   discord: {
-    token: required('DISCORD_TOKEN'),
-    clientId: required('DISCORD_CLIENT_ID'),
-    summaryChannelId: required('DISCORD_SUMMARY_CHANNEL_ID'),
+    webhookUrl: required('DISCORD_WEBHOOK_URL'),
   },
   google: {
     apiKey: required('GOOGLE_API_KEY'),
